@@ -61,6 +61,7 @@
     $('recapEnabled').checked = !!s.recapEnabled;
     $('recapDay').value = String(s.recapDay);
     $('recapTime').value = s.recapTime;
+    $('goodnightEnabled').checked = !!s.goodnightEnabled;
     $('launchAtLogin').checked = !!s.launchAtLogin;
 
     const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
@@ -87,6 +88,7 @@
       recapEnabled: $('recapEnabled').checked,
       recapDay: $('recapDay').value,
       recapTime: $('recapTime').value,
+      goodnightEnabled: $('goodnightEnabled').checked,
       launchAtLogin: $('launchAtLogin').checked,
     },
   });

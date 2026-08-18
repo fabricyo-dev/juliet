@@ -296,3 +296,42 @@ test('new day plans a pep; replanToday keeps a pep that already passed as consum
   S.replanToday(st, at(2026, 8, 19, 21, 59), seq(0.5));
   assert.equal(st.schedule.pepFired, st.schedule.pepAt <= at(2026, 8, 19, 21, 59));
 });
+
+// ---- gentle return ----
+test('needsGentleReturn: true after 5+ days without done/opened, false when recent or brand new', () => {
+  const now = at(2026, 8, 25, 12);
+  const st = fresh(at(2026, 8, 18, 9));
+  st.firstRunAt = at(2026, 8, 1, 9);
+  assert.equal(S.needsGentleReturn(st, now), true);            // long-time user, no history at all
+  S.markOpened(st, 'arxiv', at(2026, 8, 22, 12));               // 3 days ago
+  assert.equal(S.needsGentleReturn(st, now), false);
+  st.history = [{ activityId: 'cs50', at: at(2026, 8, 19, 12), outcome: 'done' }]; // 6 days ago
+  assert.equal(S.needsGentleReturn(st, now), true);
+  const brandNew = fresh(at(2026, 8, 24, 9)); brandNew.firstRunAt = at(2026, 8, 24, 9);
+  assert.equal(S.needsGentleReturn(brandNew, now), false);      // day-old install, nothing yet — not "away"
+});
+
+test('chooseEasyActivity prefers enabled easy ones, falls back to any enabled', () => {
+  const acts = [{ id: 'a', enabled: true }, { id: 'b', enabled: true, easy: true }, { id: 'c', enabled: false, easy: true }];
+  for (let i = 0; i < 10; i++) assert.equal(S.chooseEasyActivity(acts, [], Math.random).id, 'b');
+  assert.equal(S.chooseEasyActivity([{ id: 'a', enabled: true }], [], Math.random).id, 'a');
+  assert.equal(S.chooseEasyActivity([{ id: 'c', enabled: false, easy: true }], [], Math.random), null);
+});
+
+// ---- goodnight ----
+test('goodnight: off by default; when enabled fires once ~90 min after active end, also after midnight, never twice', () => {
+  const st = fresh(at(2026, 8, 18, 9));            // active 09:00–22:00
+  st.schedule.slots = []; st.schedule.fired = [];
+  st.schedule.movieNextAt = at(2026, 9, 25, 19); st.schedule.recapNextAt = at(2026, 9, 27, 18);
+  assert.equal(S.tick(st, at(2026, 8, 18, 23, 35), true, seq(0.5)), null); // disabled
+  st.settings.goodnightEnabled = true;
+  assert.equal(S.tick(st, at(2026, 8, 18, 23, 20), true, seq(0.5)), null); // too early (< end + 90 min)
+  assert.equal(S.tick(st, at(2026, 8, 18, 23, 35), false, seq(0.5)), null); // absent
+  assert.deepEqual(S.tick(st, at(2026, 8, 18, 23, 35), true, seq(0.5)), { kind: 'goodnight' });
+  assert.equal(S.tick(st, at(2026, 8, 18, 23, 50), true, seq(0.5)), null); // once per night
+  assert.equal(S.tick(st, at(2026, 8, 19, 1, 10), true, seq(0.5)), null);  // still the same night
+  // next evening, after midnight this time
+  assert.deepEqual(S.tick(st, at(2026, 8, 20, 0, 40), true, seq(0.5)), { kind: 'goodnight' });
+  // too late into the night (past end + 6 h) → skipped
+  assert.equal(S.tick(st, at(2026, 8, 21, 4, 30), true, seq(0.5)), null);
+});

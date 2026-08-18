@@ -93,6 +93,32 @@ function chooseActivity(activities, recent, rng = Math.random) {
   return pool[Math.min(pool.length - 1, Math.floor(rng() * pool.length))];
 }
 
+// Gentle return: nothing done/opened for 5+ days, and she isn't a brand-new install.
+const AWAY_MS = 5 * 24 * 60 * MIN;
+function needsGentleReturn(state, now) {
+  const last = (state.history || []).reduce((m, h) => (h.outcome === 'opened' || h.outcome === 'done' || !h.outcome ? Math.max(m, h.at) : m), 0);
+  if (last) return now - last >= AWAY_MS;
+  return !!state.firstRunAt && now - state.firstRunAt >= AWAY_MS;
+}
+function chooseEasyActivity(activities, recent, rng = Math.random) {
+  const easy = activities.filter((a) => a.enabled && a.easy);
+  return chooseActivity(easy.length ? easy : activities, recent, rng);
+}
+
+// Goodnight: once per evening, inside [activeEnd + 90 min, activeEnd + 6 h) — may be after midnight.
+const GOODNIGHT_AFTER_MS = 90 * MIN;
+const GOODNIGHT_WINDOW_MS = 6 * 60 * MIN;
+function goodnightDue(state, now) {
+  const sch = state.schedule;
+  if (!state.settings.goodnightEnabled) return null;
+  for (const dayOffset of [0, -1]) {
+    const { end } = activeWindow(state.settings, now + dayOffset * 24 * 60 * MIN);
+    const key = dayKey(end);
+    if (now >= end + GOODNIGHT_AFTER_MS && now < end + GOODNIGHT_WINDOW_MS && sch.goodnightDate !== key) return key;
+  }
+  return null;
+}
+
 function noteShown(sch, activityId) {
   sch.recent = [...(sch.recent || []), activityId].slice(-5);
 }
@@ -140,6 +166,8 @@ function tick(state, now, present, rng = Math.random) {
     sch.recapNextAt = recapDueAt(settings, now);
     return { kind: 'recap' };
   }
+  const gn = goodnightDue(state, now);
+  if (gn) { sch.goodnightDate = gn; return { kind: 'goodnight' }; }
   // 6. snoozed
   const dueSnooze = sch.snoozed.find((s) => s.at <= now);
   if (dueSnooze) {
@@ -210,5 +238,5 @@ function recapSummary(history, now) {
 module.exports = {
   MIN, SNOOZE_MS, SNOOZE_STALE_MS, MOVIE_HOLD_MS, TICK_MS,
   parseHM, dayKey, activeWindow, planDay, planPep, nextWeeklyAt, movieDueAt, recapDueAt, chooseActivity, tick, replanToday,
-  isQuiet, setQuiet, snooze, markDone, markOpened, recapSummary,
+  isQuiet, setQuiet, snooze, markDone, markOpened, recapSummary, needsGentleReturn, chooseEasyActivity, goodnightDue,
 };

@@ -43,6 +43,9 @@ app.whenReady().then(() => {
   if (demo === 'movie') setTimeout(() => fireMovie(), 1500);
   if (demo === 'recap') setTimeout(() => fireRecap(), 1500);
   if (demo === 'pep') setTimeout(() => firePep(), 1500);
+  if (demo === 'welcome') setTimeout(() => fireWelcome(), 1500);
+  if (demo === 'goodnight') setTimeout(() => fireGoodnight(), 1500);
+  if (demo === 'gentle') setTimeout(() => fireNudge(undefined, true), 1500);
   if (demo === 'settings') setTimeout(openSettings, 500);
 });
 app.on('window-all-closed', () => { /* keep running in the menu bar */ });
@@ -102,6 +105,12 @@ let trayShowedQuiet = false;
 function tick() {
   try {
     const now = Date.now();
+    if (!store.state.firstRunAt) { store.state.firstRunAt = now; store.save(); }
+    if (!store.state.welcomed) {
+      // Nothing else until she has been introduced; the scheduler simply starts on the next tick.
+      if (presence.isPresent() && !overlay && !S.isQuiet(store.state, now)) fireWelcome();
+      return;
+    }
     const fire = S.tick(store.state, now, presence.isPresent() && !overlay);
     store.save();
     const quietNow = S.isQuiet(store.state, now);
@@ -110,6 +119,7 @@ function tick() {
     if (fire.kind === 'movie') fireMovie();
     else if (fire.kind === 'recap') fireRecap();
     else if (fire.kind === 'pep') firePep();
+    else if (fire.kind === 'goodnight') fireGoodnight();
     else fireNudge(fire.activityId);
   } catch (e) {
     console.error('tick failed', e);
@@ -161,18 +171,23 @@ function dismissOverlay() {
   overlay = null; current = null;
 }
 
-function fireNudge(activityId) {
+function fireNudge(activityId, forceGentle = false) {
   if (overlay) return;
+  const gentle = forceGentle || S.needsGentleReturn(store.state, Date.now());
   const a = activityId
     ? store.state.activities.find((x) => x.id === activityId)
-    : S.chooseActivity(store.state.activities, store.state.schedule.recent);
+    : gentle
+      ? S.chooseEasyActivity(store.state.activities, store.state.schedule.recent)
+      : S.chooseActivity(store.state.activities, store.state.schedule.recent);
   if (!a) return;
   current = { kind: 'nudge', activity: a };
   sendShow({
     kind: 'nudge',
-    title: `Areej — ${a.name}`,
-    line: NUDGE_LINES[Math.floor(Math.random() * NUDGE_LINES.length)],
-    buttons: [{ id: 'open', label: 'Open' }, { id: 'later', label: 'Later' }, { id: 'done', label: 'Did it' }],
+    title: gentle ? `Areej — no pressure.` : `Areej — ${a.name}`,
+    line: gentle
+      ? `You've been away a bit — that's fine. Want to start small? ${a.name} is a quick one.`
+      : NUDGE_LINES[Math.floor(Math.random() * NUDGE_LINES.length)],
+    buttons: [{ id: 'open', label: gentle ? 'Open it' : 'Open' }, { id: 'later', label: 'Later' }, { id: 'done', label: 'Did it' }],
   });
 }
 function moviePayload(title) {
@@ -217,6 +232,27 @@ function fireRecap() {
   });
 }
 
+function fireWelcome() {
+  if (overlay) return;
+  store.state.welcomed = true; store.save();
+  current = { kind: 'welcome' };
+  sendShow({
+    kind: 'welcome',
+    title: "Hi Areej. I'm Juliet.",
+    line: "Mirza built me for you. I'll nudge you about your extracurriculars, pick movie nights, and remind you you're brilliant. Click me anytime.",
+    buttons: [{ id: 'settings', label: 'Show me the settings' }, { id: 'ack', label: 'Hi, Juliet' }],
+  });
+}
+function fireGoodnight() {
+  if (overlay) return;
+  current = { kind: 'goodnight' };
+  sendShow({
+    kind: 'goodnight',
+    title: 'Goodnight, Areej.',
+    line: "It's late. Sleep is a study strategy too.",
+    buttons: [{ id: 'ack', label: 'Goodnight, Juliet' }],
+  });
+}
 function firePep() {
   if (overlay) return;
   current = { kind: 'pep' };
@@ -257,7 +293,7 @@ ipcMain.on('overlay:action', async (_e, id) => {
     const now = Date.now();
     if (current.kind === 'nudge') {
       const a = current.activity;
-      if (id === 'open' || id === 'cat') {
+      if (id === 'open') {
         if (await openAll([a.url])) { S.markOpened(store.state, a.id, now); store.save(); leave(false); }
         else sendShow(couldNotOpenPayload('nudge', `Areej — ${a.name}`));
       } else if (id === 'later') { S.snooze(store.state, a.id, now); store.save(); leave(false); }
@@ -265,7 +301,7 @@ ipcMain.on('overlay:action', async (_e, id) => {
       else leave(false); // ack / timeout
     } else if (current.kind === 'movie') {
       const title = current.movie;
-      if (id === 'open' || id === 'cat') {
+      if (id === 'open') {
         if (await openAll(L.movieLinks(title))) leave(true);
         else sendShow(couldNotOpenPayload('movie', `Movie night, Areej: ${title}`));
       } else if (id === 'different') {
@@ -275,10 +311,13 @@ ipcMain.on('overlay:action', async (_e, id) => {
       } else { // skip / ack / timeout: she didn't watch it — put it back
         store.state.movies = L.unpickMovie(store.state.movies, title); store.save(); leave(false);
       }
-    } else if (current.kind === 'pep') {
+    } else if (current.kind === 'pep' || current.kind === 'goodnight') {
       leave(false); // any click (or the timeout) — she said her piece
+    } else if (current.kind === 'welcome') {
+      if (id === 'settings') openSettings();
+      leave(false);
     } else if (current.kind === 'recap') {
-      if (id === 'open' || id === 'cat') {
+      if (id === 'open') {
         const a = S.chooseActivity(store.state.activities, store.state.schedule.recent);
         if (a && await openAll([a.url])) { S.markOpened(store.state, a.id, now); store.save(); }
       }
@@ -325,6 +364,7 @@ ipcMain.handle('settings:save', (_e, patch) => {
     if (!/^\d{2}:\d{2}$/.test(s.movieTime)) s.movieTime = st.settings.movieTime;
     s.pepPerWeek = Math.max(0, Math.min(7, parseInt(s.pepPerWeek, 10) || 0));
     s.recapEnabled = !!s.recapEnabled;
+    s.goodnightEnabled = !!s.goodnightEnabled;
     s.recapDay = Math.max(0, Math.min(6, parseInt(s.recapDay, 10) || 0));
     if (!/^\d{2}:\d{2}$/.test(s.recapTime)) s.recapTime = st.settings.recapTime;
     const recapChanged = s.recapDay !== st.settings.recapDay || s.recapTime !== st.settings.recapTime;

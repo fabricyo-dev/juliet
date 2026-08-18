@@ -10,7 +10,7 @@ npm start
 npm test
 ```
 
-Dev shortcuts: `JULIET_DEMO=nudge|movie|recap|pep|settings npm start` triggers that thing ~1.5 s after launch.
+Dev shortcuts: `JULIET_DEMO=nudge|gentle|movie|recap|pep|welcome|goodnight|settings npm start` triggers that thing ~1.5 s after launch.
 
 ## Build the Mac app
 
@@ -30,11 +30,14 @@ Produces `dist/Juliet-1.0.0-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Si
 ## Rules of the cat
 
 - *N* nudges/day (default 3) at random times inside active hours (default 09:00–22:00). A nudge fires only when the Mac is awake, unlocked, and used in the last 5 minutes. A slot that comes due while she's away is held and fires when she's back (if still inside hours); otherwise it's dropped. Slots never stack.
-- **Open** = launches the link. **Later** = comes back in 1 h. **Did it** = logged (count in Settings → Schedule). Clicking Juliet herself = Open. Ignored for 90 s → she walks off.
+- **Open** = launches the link. **Later** = comes back in 1 h. **Did it** = logged (count in Settings → Schedule). Clicking Juliet herself = petting: she purrs and keeps her message. Ignored for 90 s → she walks off.
 - Movie night: default Friday 19:00. **Open** = Google + Netflix search tabs. **Different one** = re-roll. **Skip this week** = puts the title back, week consumed. When every movie is seen the list resets.
 - **Quiet…** (menu-bar cat): *For 2 hours* or *Rest of today*. Nothing fires while quiet; a slot that came due is held and fires once quiet ends (if still inside active hours) — never stacked. *Resume now* ends it early. "Send Juliet now" / "Pick a movie now" still work while quiet (you asked).
 - **Weekly recap** (default Sunday 18:00, editable / switchable in Settings → Schedule): "This week: 4 done · 2 opened · best day Tuesday." Counts **Did it** and **Open** clicks from the last 7 days. An empty week gets a gentle "Quiet week — no worries" and an *Open one now* button.
 - **Pep talks** (default 3/week, 0–7 in Settings → Schedule, or menu-bar "Pep talk now"): she shows up with no task, just "Stop overthinking — you've got this. You are the smartest, most talented, well-spoken person I know." Lines live in `src/main/defaults.js` (`PEP_LINES`). Never lands within 30 min of a nudge; same presence/quiet rules.
+- **First launch**: the first time she's at the Mac, Juliet introduces herself ("Hi Areej. I'm Juliet. Mirza built me for you…") with a button straight into Settings. Once only.
+- **Gentle return**: if nothing has been done or opened for 5+ days, the next nudge softens ("no pressure — want to start small?") and picks a quick activity (the ones flagged `easy` in defaults).
+- **Goodnight** (off by default, Settings → Schedule): once per night, ~90 min after active hours end, if she's still at the Mac: "It's late. Sleep is a study strategy too."
 - Juliet appears on the display your mouse is on.
 
 ## Art & animation

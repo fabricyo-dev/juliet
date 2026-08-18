@@ -10,6 +10,8 @@
   const EDGE = 200;                                     // px from a screen edge where the bubble edge-anchors
   const CHEER_MS = 1100;                                // "Did it": a short cheer in the bubble before she turns back
   const CHEERS = ["Nice one, Areej!", "That's the way.", "Look at you go."];
+  const PURR_MS = 900;                                  // clicking Juliet herself: a purr, then back to what she was saying
+  const PURRS = ["purr.", "prrrp.", "mrrp."];
   const ACTED_WATCHDOG_MS = 8000;                       // max wait for main's overlay:leave after an action
 
   const hit = document.getElementById('hit');
@@ -106,6 +108,7 @@
 
   // ---- speech bubble (code-rendered; text is whatever the runtime sends, "Hi!" by default) ----
   function fill(p) {
+    savedBubble = null; clearTimeout(purrTimer);
     titleEl.textContent = (p && p.title) || A.DEFAULT_SPEECH;
     lineEl.textContent = (p && p.line) || '';
     buttonsEl.replaceChildren(...((p && p.buttons) || []).map((b) => {
@@ -229,7 +232,26 @@
   // Only capture the mouse while she is talking (bubble + buttons live); walking is always click-through.
   hit.addEventListener('pointerenter', () => { if (phase === 'talk' || phase === 'acted' || phase === 'cheer') window.juliet.setHit(true); });
   hit.addEventListener('pointerleave', () => window.juliet.setHit(false));
-  canvas.addEventListener('click', () => act('cat'));
+  // Petting: clicking her (not a button) is affection, not an action — she purrs and keeps her message.
+  let purrTimer = null, savedBubble = null;
+  function pet() {
+    if (phase !== 'talk') return;
+    if (!savedBubble) savedBubble = { title: titleEl.textContent, line: lineEl.textContent, buttons: [...buttonsEl.children] };
+    titleEl.textContent = PURRS[Math.floor(Math.random() * PURRS.length)];
+    lineEl.textContent = '';
+    buttonsEl.replaceChildren();
+    armTimeout(); // petting counts as being there
+    clearTimeout(purrTimer);
+    purrTimer = setTimeout(() => {
+      if (savedBubble && phase === 'talk') {
+        titleEl.textContent = savedBubble.title;
+        lineEl.textContent = savedBubble.line;
+        buttonsEl.replaceChildren(...savedBubble.buttons);
+      }
+      savedBubble = null;
+    }, PURR_MS);
+  }
+  canvas.addEventListener('click', pet);
 
   window.juliet.onShow(show);
   window.juliet.onLeave(leave);
