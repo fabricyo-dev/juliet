@@ -28,9 +28,17 @@ const DEFAULT_SETTINGS = {
   recapEnabled: true,
   recapDay: 0, // Sunday
   recapTime: '18:00',
+  pepPerWeek: 3, // unprompted pep talks (0–7)
   launchAtLogin: true,
   presenceIdleSeconds: 300,
 };
+
+// What Juliet says when she shows up just to cheer Areej on (no task attached). Mirza's line first.
+const PEP_LINES = [
+  "Stop overthinking — you've got this. You are the smartest, most talented, well-spoken person I know.",
+  "You are the smartest, most talented, well-spoken person in any room. Stop overthinking and go.",
+  "Quick reminder from your cat: you've got this. Smartest, most talented, best-spoken — that's you.",
+];
 
 const PLACEHOLDER_MOVIES = ['Paste your watch-list here, one per line', 'e.g. The Social Network'];
 
@@ -41,8 +49,8 @@ function defaultState() {
     activities: DEFAULT_ACTIVITIES.map((a) => ({ ...a })),
     movies: { unseen: [...PLACEHOLDER_MOVIES], seen: [] },
     history: [],
-    schedule: { planDate: null, slots: [], fired: [], snoozed: [], recent: [], movieNextAt: null, recapNextAt: null, quietUntil: null },
+    schedule: { planDate: null, slots: [], fired: [], snoozed: [], recent: [], movieNextAt: null, recapNextAt: null, quietUntil: null, pepAt: null, pepFired: false },
   };
 }
 
-module.exports = { DEFAULT_ACTIVITIES, DEFAULT_SETTINGS, PLACEHOLDER_MOVIES, defaultState };
+module.exports = { DEFAULT_ACTIVITIES, DEFAULT_SETTINGS, PLACEHOLDER_MOVIES, PEP_LINES, defaultState };

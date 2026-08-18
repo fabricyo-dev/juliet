@@ -43,6 +43,22 @@ function planDay(settings, ms, rng = Math.random) {
   return out.sort((a, b) => a - b);
 }
 
+// Unprompted pep talk: with probability pepPerWeek/7 pick one time today inside active hours,
+// ≥ 30 min away from every nudge slot when possible. Returns epoch ms or null.
+const PEP_GAP_MS = 30 * MIN;
+function planPep(settings, ms, slots, rng = Math.random) {
+  const perWeek = Math.max(0, Math.min(7, settings.pepPerWeek | 0));
+  if (perWeek === 0 || rng() >= perWeek / 7) return null;
+  const { start, end } = activeWindow(settings, ms);
+  let best = null;
+  for (let i = 0; i < 20; i++) {
+    const t = Math.floor((start + rng() * (end - start - MIN)) / MIN) * MIN;
+    if (best === null) best = t;
+    if (slots.every((s) => Math.abs(t - s) >= PEP_GAP_MS)) return t;
+  }
+  return best;
+}
+
 // Next occurrence of weekday `day` (0 = Sunday) at "HH:MM" strictly after fromMs.
 function nextWeeklyAt(day, time, fromMs) {
   const target = parseHM(time);
@@ -92,6 +108,8 @@ function tick(state, now, present, rng = Math.random) {
     sch.planDate = today;
     sch.slots = planDay(settings, now, rng);
     sch.fired = [];
+    sch.pepAt = planPep(settings, now, sch.slots, rng);
+    sch.pepFired = false;
   }
   // 2. weekly bookkeeping (48 h hold, then drop to next occurrence)
   if (!sch.movieNextAt) sch.movieNextAt = movieDueAt(settings, now);
@@ -105,7 +123,9 @@ function tick(state, now, present, rng = Math.random) {
   const firedSet = new Set(sch.fired);
   if (now >= end) {
     for (const t of sch.slots) if (t <= now && !firedSet.has(t)) { sch.fired.push(t); firedSet.add(t); }
+    if (sch.pepAt && !sch.pepFired) sch.pepFired = true;
   }
+  const pepPending = !!sch.pepAt && !sch.pepFired && now >= sch.pepAt;
   // 4. drop stale snoozes
   sch.snoozed = (sch.snoozed || []).filter((s) => now - s.at <= SNOOZE_STALE_MS);
 
@@ -132,10 +152,16 @@ function tick(state, now, present, rng = Math.random) {
     const pending = sch.slots.filter((t) => t <= now && !firedSet.has(t));
     if (pending.length) {
       sch.fired.push(...pending);
+      if (pepPending) sch.pepFired = true; // one visit at a time — fold the pep into this nudge
       const a = chooseActivity(state.activities, sch.recent, rng);
       if (!a) return null;
       noteShown(sch, a.id);
       return { kind: 'nudge', activityId: a.id };
+    }
+    // 8. unprompted pep talk
+    if (pepPending && (settings.pepPerWeek | 0) > 0) {
+      sch.pepFired = true;
+      return { kind: 'pep' };
     }
   }
   return null;
@@ -148,6 +174,8 @@ function replanToday(state, now, rng = Math.random) {
   sch.planDate = dayKey(now);
   sch.slots = planDay(state.settings, now, rng);
   sch.fired = sch.slots.filter((t) => t <= now);
+  sch.pepAt = planPep(state.settings, now, sch.slots, rng);
+  sch.pepFired = !!sch.pepAt && sch.pepAt <= now;
 }
 
 function snooze(state, activityId, now) {
@@ -181,6 +209,6 @@ function recapSummary(history, now) {
 
 module.exports = {
   MIN, SNOOZE_MS, SNOOZE_STALE_MS, MOVIE_HOLD_MS, TICK_MS,
-  parseHM, dayKey, activeWindow, planDay, nextWeeklyAt, movieDueAt, recapDueAt, chooseActivity, tick, replanToday,
+  parseHM, dayKey, activeWindow, planDay, planPep, nextWeeklyAt, movieDueAt, recapDueAt, chooseActivity, tick, replanToday,
   isQuiet, setQuiet, snooze, markDone, markOpened, recapSummary,
 };

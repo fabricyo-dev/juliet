@@ -242,3 +242,57 @@ test('history entries without an outcome count as done (older versions)', () => 
   const r = S.recapSummary([{ activityId: 'a', at: at(2026, 8, 22, 9) }], at(2026, 8, 23, 18));
   assert.equal(r.done, 1);
 });
+
+// ---- pep talks ----
+test('planPep: pepPerWeek/7 chance per day; time inside active hours and ≥ 30 min from every nudge slot', () => {
+  const settings = { nudgesPerDay: 3, activeStart: '09:00', activeEnd: '22:00', pepPerWeek: 3 };
+  const day = at(2026, 8, 18);
+  const slots = S.planDay(settings, day, Math.random);
+  // first rng draw is the daily coin: 0.9 > 3/7 → no pep today
+  assert.equal(S.planPep(settings, day, slots, seq(0.9)), null);
+  let planned = 0;
+  for (let k = 0; k < 40; k++) {
+    const t = S.planPep(settings, day, slots, seq(0.1, Math.random(), Math.random(), Math.random(), Math.random(), Math.random()));
+    assert.ok(t !== null);
+    planned++;
+    assert.ok(t >= at(2026, 8, 18, 9) && t < at(2026, 8, 18, 22));
+    for (const s of slots) assert.ok(Math.abs(t - s) >= 30 * MIN, 'pep keeps its distance from nudges');
+  }
+  assert.equal(planned, 40);
+  assert.equal(S.planPep({ ...settings, pepPerWeek: 0 }, day, slots, seq(0.0)), null);
+  assert.notEqual(S.planPep({ ...settings, pepPerWeek: 7 }, day, slots, seq(0.999, 0.5)), null);
+});
+
+test('tick fires a pep once when due and present, holds while absent, drops after active end', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.settings.pepPerWeek = 7;
+  st.schedule.slots = []; st.schedule.fired = [];
+  st.schedule.pepAt = at(2026, 8, 18, 15); st.schedule.pepFired = false;
+  assert.equal(S.tick(st, at(2026, 8, 18, 15, 1), false, seq(0.5)), null);
+  assert.deepEqual(S.tick(st, at(2026, 8, 18, 15, 3), true, seq(0.5)), { kind: 'pep' });
+  assert.equal(st.schedule.pepFired, true);
+  assert.equal(S.tick(st, at(2026, 8, 18, 15, 4), true, seq(0.5)), null);
+  // held past active end → dropped, not fired tomorrow morning
+  st.schedule.pepAt = at(2026, 8, 18, 21, 50); st.schedule.pepFired = false;
+  assert.equal(S.tick(st, at(2026, 8, 18, 22, 5), true, seq(0.5)), null);
+  assert.equal(st.schedule.pepFired, true);
+});
+
+test('tick: a nudge slot pending at the same time wins and the pep is folded (no back-to-back visits)', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.schedule.slots = [at(2026, 8, 18, 12)]; st.schedule.fired = [];
+  st.schedule.pepAt = at(2026, 8, 18, 12, 0); st.schedule.pepFired = false;
+  assert.equal(S.tick(st, at(2026, 8, 18, 12, 1), true, seq(0.5)).kind, 'nudge');
+  assert.equal(st.schedule.pepFired, true);
+  assert.equal(S.tick(st, at(2026, 8, 18, 12, 2), true, seq(0.5)), null);
+});
+
+test('new day plans a pep; replanToday keeps a pep that already passed as consumed', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.settings.pepPerWeek = 7;
+  S.tick(st, at(2026, 8, 19, 8), false, seq(0.5));
+  assert.ok(st.schedule.pepAt >= at(2026, 8, 19, 9) && st.schedule.pepAt < at(2026, 8, 19, 22));
+  assert.equal(st.schedule.pepFired, false);
+  S.replanToday(st, at(2026, 8, 19, 21, 59), seq(0.5));
+  assert.equal(st.schedule.pepFired, st.schedule.pepAt <= at(2026, 8, 19, 21, 59));
+});

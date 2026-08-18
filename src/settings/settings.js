@@ -53,6 +53,7 @@
 
     const s = state.settings;
     $('nudgesPerDay').value = s.nudgesPerDay;
+    $('pepPerWeek').value = s.pepPerWeek;
     $('activeStart').value = s.activeStart;
     $('activeEnd').value = s.activeEnd;
     $('movieDay').value = String(s.movieDay);
@@ -78,6 +79,7 @@
   $('saveSchedule').onclick = () => save({
     settings: {
       nudgesPerDay: $('nudgesPerDay').value,
+      pepPerWeek: $('pepPerWeek').value,
       activeStart: $('activeStart').value,
       activeEnd: $('activeEnd').value,
       movieDay: $('movieDay').value,

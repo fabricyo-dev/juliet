@@ -6,7 +6,7 @@ const {
 const S = require('./scheduler');
 const L = require('./links');
 const { createStore } = require('./store');
-const { defaultState, PLACEHOLDER_MOVIES, DEFAULT_ACTIVITIES } = require('./defaults');
+const { defaultState, PLACEHOLDER_MOVIES, PEP_LINES, DEFAULT_ACTIVITIES } = require('./defaults');
 const { createPresence } = require('./presence');
 
 const ASSETS = path.join(__dirname, '..', '..', 'assets');
@@ -23,7 +23,7 @@ let overlay = null; // BrowserWindow while Juliet is on screen
 let overlayWatchdog = null;
 const OVERLAY_MAX_MS = 4 * 60 * 1000;
 let settingsWin = null;
-let current = null; // {kind:'nudge', activity} | {kind:'movie', movie} | {kind:'nomovie'}
+let current = null; // {kind:'nudge', activity} | {kind:'movie', movie} | {kind:'nomovie'} | {kind:'recap'} | {kind:'pep'}
 
 app.setName('Juliet');
 if (!app.requestSingleInstanceLock()) app.quit();
@@ -42,6 +42,7 @@ app.whenReady().then(() => {
   if (demo === 'nudge') setTimeout(() => fireNudge(), 1500);
   if (demo === 'movie') setTimeout(() => fireMovie(), 1500);
   if (demo === 'recap') setTimeout(() => fireRecap(), 1500);
+  if (demo === 'pep') setTimeout(() => firePep(), 1500);
   if (demo === 'settings') setTimeout(openSettings, 500);
 });
 app.on('window-all-closed', () => { /* keep running in the menu bar */ });
@@ -71,6 +72,7 @@ function refreshTrayMenu() {
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Send Juliet now', click: () => fireNudge() },
     { label: 'Pick a movie now', click: () => fireMovie() },
+    { label: 'Pep talk now', click: () => firePep() },
     {
       label: quietLabel,
       submenu: [
@@ -107,6 +109,7 @@ function tick() {
     if (!fire) return;
     if (fire.kind === 'movie') fireMovie();
     else if (fire.kind === 'recap') fireRecap();
+    else if (fire.kind === 'pep') firePep();
     else fireNudge(fire.activityId);
   } catch (e) {
     console.error('tick failed', e);
@@ -214,6 +217,18 @@ function fireRecap() {
   });
 }
 
+function firePep() {
+  if (overlay) return;
+  current = { kind: 'pep' };
+  sendShow({
+    kind: 'pep',
+    title: 'Hey Areej.',
+    // the first line is the one Mirza wrote — say it most often, vary the rest of the time
+    line: Math.random() < 0.5 ? PEP_LINES[0] : PEP_LINES[Math.floor(Math.random() * PEP_LINES.length)],
+    buttons: [{ id: 'ack', label: 'Thanks, Juliet' }],
+  });
+}
+
 async function openAll(urls) {
   try {
     for (const u of urls) await shell.openExternal(u);
@@ -260,6 +275,8 @@ ipcMain.on('overlay:action', async (_e, id) => {
       } else { // skip / ack / timeout: she didn't watch it — put it back
         store.state.movies = L.unpickMovie(store.state.movies, title); store.save(); leave(false);
       }
+    } else if (current.kind === 'pep') {
+      leave(false); // any click (or the timeout) — she said her piece
     } else if (current.kind === 'recap') {
       if (id === 'open' || id === 'cat') {
         const a = S.chooseActivity(store.state.activities, store.state.schedule.recent);
@@ -306,11 +323,13 @@ ipcMain.handle('settings:save', (_e, patch) => {
     if (!/^\d{2}:\d{2}$/.test(s.activeStart)) s.activeStart = st.settings.activeStart;
     if (!/^\d{2}:\d{2}$/.test(s.activeEnd)) s.activeEnd = st.settings.activeEnd;
     if (!/^\d{2}:\d{2}$/.test(s.movieTime)) s.movieTime = st.settings.movieTime;
+    s.pepPerWeek = Math.max(0, Math.min(7, parseInt(s.pepPerWeek, 10) || 0));
     s.recapEnabled = !!s.recapEnabled;
     s.recapDay = Math.max(0, Math.min(6, parseInt(s.recapDay, 10) || 0));
     if (!/^\d{2}:\d{2}$/.test(s.recapTime)) s.recapTime = st.settings.recapTime;
     const recapChanged = s.recapDay !== st.settings.recapDay || s.recapTime !== st.settings.recapTime;
-    const planChanged = s.nudgesPerDay !== st.settings.nudgesPerDay || s.activeStart !== st.settings.activeStart || s.activeEnd !== st.settings.activeEnd;
+    const planChanged = s.nudgesPerDay !== st.settings.nudgesPerDay || s.activeStart !== st.settings.activeStart
+      || s.activeEnd !== st.settings.activeEnd || s.pepPerWeek !== st.settings.pepPerWeek;
     const movieChanged = s.movieDay !== st.settings.movieDay || s.movieTime !== st.settings.movieTime;
     st.settings = s;
     if (planChanged) S.replanToday(st, Date.now()); // new plan governs only the rest of today
