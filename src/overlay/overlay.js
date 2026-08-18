@@ -80,7 +80,12 @@
     }));
   }
   function show(p) {
-    if (phase !== 'idle' && phase !== 'gone') { fill(p); if (phase === 'talk') armTimeout(); return; }
+    if (phase !== 'idle' && phase !== 'gone') {
+      // already on screen (e.g. movie re-roll): update the bubble in place and keep talking
+      fill(p);
+      if (phase === 'talk' || phase === 'acted') { phase = 'talk'; bubble.hidden = false; armTimeout(); }
+      return;
+    }
     if (W() < 200) { setTimeout(() => show(p), 100); return; } // viewport not laid out yet
     loadSheet(p.spriteSheetUrl);
     fill(p);
