@@ -67,3 +67,7 @@ scripts/      make-icons.js
 assets/juliet designer sprite pack (sheets, frames, manifest, previews)
 test/         node:test suites
 ```
+
+---
+
+Made by Mirza ([@fabricyo-dev](https://github.com/fabricyo-dev)) for Areej. Pixel art: the Juliet sprite pack (v6).
