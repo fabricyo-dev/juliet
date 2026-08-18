@@ -30,6 +30,9 @@ const DEFAULT_SETTINGS = {
   recapTime: '18:00',
   pepPerWeek: 3, // unprompted pep talks (0–7)
   goodnightEnabled: false, // one soft "it's late" ~90 min after active hours end
+  phoneEnabled: false,     // ping her iPhone (via ntfy) when something is due while she's away from the Mac
+  phoneTopic: null,        // generated the first time phone pings are switched on
+  phoneServer: 'https://ntfy.sh',
   launchAtLogin: true,
   presenceIdleSeconds: 300,
 };

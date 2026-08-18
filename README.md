@@ -10,7 +10,7 @@ npm start
 npm test
 ```
 
-Dev shortcuts: `JULIET_DEMO=nudge|gentle|movie|recap|pep|welcome|goodnight|settings npm start` triggers that thing ~1.5 s after launch.
+Dev shortcuts: `JULIET_DEMO=nudge|gentle|movie|recap|pep|welcome|goodnight|phone|settings npm start` triggers that thing ~1.5 s after launch.
 
 ## Build the Mac app
 
@@ -38,6 +38,7 @@ Produces `dist/Juliet-1.0.0-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Si
 - **First launch**: the first time she's at the Mac, Juliet introduces herself ("Hi Areej. I'm Juliet. Mirza built me for you…") with a button straight into Settings. Once only.
 - **Gentle return**: if nothing has been done or opened for 5+ days, the next nudge softens ("no pressure — want to start small?") and picks a quick activity (the ones flagged `easy` in defaults).
 - **Goodnight** (off by default, Settings → Schedule): once per night, ~90 min after active hours end, if she's still at the Mac: "It's late. Sleep is a study strategy too."
+- **iPhone pings** (off by default, Settings → iPhone): install the free ntfy app, subscribe to the private topic Juliet shows you, send a test. From then on anything due while she's *away* from the Mac (locked, idle, elsewhere) goes to her iPhone instead — nudges (tap opens the link), pep talks, movie night (tap opens Netflix search), the recap. At the Mac the cat still handles it; never both. Goodnight stays Mac-only. This is the app's only network use.
 - Juliet appears on the display your mouse is on.
 
 ## Art & animation

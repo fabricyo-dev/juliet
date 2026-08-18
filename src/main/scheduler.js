@@ -123,10 +123,13 @@ function noteShown(sch, activityId) {
   sch.recent = [...(sch.recent || []), activityId].slice(-5);
 }
 
-// Returns {kind:'nudge', activityId} | {kind:'movie'} | null. Mutates state.schedule.
-function tick(state, now, present, rng = Math.random) {
+// Returns {kind:'nudge', activityId, from, via} | {kind:'movie'|'recap'|'pep'|'goodnight', via} | null.
+// `present` = she is at the Mac and the cat can appear. opts.phone = she is away but her phone can be
+// pinged; then everything except goodnight is delivered via 'phone'. Mutates state.schedule.
+function tick(state, now, present, rng = Math.random, opts = {}) {
   const sch = state.schedule;
   const settings = state.settings;
+  const via = present ? 'mac' : 'phone';
 
   // 1. (re)plan the day
   const today = dayKey(now);
@@ -157,25 +160,28 @@ function tick(state, now, present, rng = Math.random) {
   // 4. drop stale snoozes
   sch.snoozed = (sch.snoozed || []).filter((s) => now - s.at <= SNOOZE_STALE_MS);
 
-  if (!present || isQuiet(state, now)) return null;
+  const deliverable = present || !!opts.phone;
+  if (!deliverable || isQuiet(state, now)) return null;
 
-  // 5. movie, then weekly recap
+  // 5. movie, then weekly recap, then (only at the Mac) goodnight
   if (now >= sch.movieNextAt) {
     sch.movieNextAt = movieDueAt(settings, now);
-    return { kind: 'movie' };
+    return { kind: 'movie', via };
   }
   if (settings.recapEnabled && now >= sch.recapNextAt) {
     sch.recapNextAt = recapDueAt(settings, now);
-    return { kind: 'recap' };
+    return { kind: 'recap', via };
   }
-  const gn = goodnightDue(state, now);
-  if (gn) { sch.goodnightDate = gn; return { kind: 'goodnight' }; }
+  if (present) {
+    const gn = goodnightDue(state, now);
+    if (gn) { sch.goodnightDate = gn; return { kind: 'goodnight', via }; }
+  }
   // 6. snoozed
   const dueSnooze = sch.snoozed.find((s) => s.at <= now);
   if (dueSnooze) {
     sch.snoozed = sch.snoozed.filter((s) => s !== dueSnooze);
     noteShown(sch, dueSnooze.activityId);
-    return { kind: 'nudge', activityId: dueSnooze.activityId, from: 'snooze' };
+    return { kind: 'nudge', activityId: dueSnooze.activityId, from: 'snooze', via };
   }
   // 7. slots (collapse all pending into one fire)
   if (now >= start && now < end) {
@@ -186,12 +192,12 @@ function tick(state, now, present, rng = Math.random) {
       const a = chooseActivity(state.activities, sch.recent, rng);
       if (!a) return null;
       noteShown(sch, a.id);
-      return { kind: 'nudge', activityId: a.id, from: 'slot' };
+      return { kind: 'nudge', activityId: a.id, from: 'slot', via };
     }
     // 8. unprompted pep talk
     if (pepPending && (settings.pepPerWeek | 0) > 0) {
       sch.pepFired = true;
-      return { kind: 'pep' };
+      return { kind: 'pep', via };
     }
   }
   return null;

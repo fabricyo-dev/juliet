@@ -54,3 +54,9 @@ ul#seen button { margin-left: 8px; font-size: 11px; padding: 1px 6px; box-shadow
 #rateLabel { min-height: 2.6em; margin: 6px 0 10px; font-size: 15px; font-weight: 600; }
 #rateSlider { width: 100%; accent-color: #f29bb0; }
 .scale { display: flex; justify-content: space-between; color: #5a5a66; font-size: 11px; }
+
+/* iPhone tab */
+ol.steps { padding-left: 20px; margin: 8px 0; }
+ol.steps li { margin: 8px 0; }
+.topicRow { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.topicRow code { background: #fff; border: 2px solid #2b2b33; border-radius: 6px; padding: 6px 10px; font-size: 14px; -webkit-user-select: text; user-select: text; }

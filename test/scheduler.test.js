@@ -109,7 +109,7 @@ test('snooze fires the same activity after 60 min when present, and goes stale a
   st.schedule.slots = []; // isolate from random slots
   S.snooze(st, 'leetcode', now);
   assert.equal(S.tick(st, now + 30 * MIN, true, seq(0.5)), null);
-  assert.deepEqual(S.tick(st, now + 61 * MIN, true, seq(0.5)), { kind: 'nudge', activityId: 'leetcode', from: 'snooze' });
+  assert.deepEqual(S.tick(st, now + 61 * MIN, true, seq(0.5)), { kind: 'nudge', activityId: 'leetcode', from: 'snooze', via: 'mac' });
   assert.deepEqual(st.schedule.snoozed, []);
   S.snooze(st, 'leetcode', now);
   assert.equal(S.tick(st, now + 5 * H, true, seq(0.5)), null); // stale, dropped
@@ -122,7 +122,7 @@ test('movie: due Friday 19:00, held while absent, fires on return, then next wee
   assert.equal(S.tick(st, at(2026, 8, 21, 19, 1), false, seq(0.5)), null);
   assert.equal(st.schedule.movieNextAt, at(2026, 8, 21, 19)); // still held
   const f = S.tick(st, at(2026, 8, 21, 21), true, seq(0.5));
-  assert.deepEqual(f, { kind: 'movie' });
+  assert.deepEqual(f, { kind: 'movie', via: 'mac' });
   assert.equal(st.schedule.movieNextAt, at(2026, 8, 28, 19));
 });
 
@@ -136,7 +136,7 @@ test('movie takes priority over a due nudge slot', () => {
   const st = fresh(at(2026, 8, 21, 9)); // Fri
   st.schedule.slots = [at(2026, 8, 21, 19)]; st.schedule.fired = [];
   const f = S.tick(st, at(2026, 8, 21, 19, 1), true, seq(0.5));
-  assert.deepEqual(f, { kind: 'movie' });
+  assert.deepEqual(f, { kind: 'movie', via: 'mac' });
 });
 
 test('markDone appends to history', () => {
@@ -201,13 +201,13 @@ test('recap: due Sunday 18:00, held while absent, fires when present, movie wins
   st.schedule.slots = []; st.schedule.fired = [];
   st.schedule.movieNextAt = at(2026, 9, 25, 19); // keep Friday's (held) movie out of the way
   assert.equal(S.tick(st, at(2026, 8, 23, 18, 1), false, seq(0.5)), null);
-  assert.deepEqual(S.tick(st, at(2026, 8, 23, 19), true, seq(0.5)), { kind: 'recap' });
+  assert.deepEqual(S.tick(st, at(2026, 8, 23, 19), true, seq(0.5)), { kind: 'recap', via: 'mac' });
   assert.equal(st.schedule.recapNextAt, at(2026, 8, 30, 18));
   // movie + recap due at once → movie first, recap on the next tick
   st.settings.movieDay = 0; st.settings.movieTime = '18:00';
   st.schedule.movieNextAt = at(2026, 8, 30, 18);
-  assert.deepEqual(S.tick(st, at(2026, 8, 30, 18, 1), true, seq(0.5)), { kind: 'movie' });
-  assert.deepEqual(S.tick(st, at(2026, 8, 30, 18, 2), true, seq(0.5)), { kind: 'recap' });
+  assert.deepEqual(S.tick(st, at(2026, 8, 30, 18, 1), true, seq(0.5)), { kind: 'movie', via: 'mac' });
+  assert.deepEqual(S.tick(st, at(2026, 8, 30, 18, 2), true, seq(0.5)), { kind: 'recap', via: 'mac' });
 });
 
 test('recap: disabled → never fires; dropped after 48 h', () => {
@@ -269,7 +269,7 @@ test('tick fires a pep once when due and present, holds while absent, drops afte
   st.schedule.slots = []; st.schedule.fired = [];
   st.schedule.pepAt = at(2026, 8, 18, 15); st.schedule.pepFired = false;
   assert.equal(S.tick(st, at(2026, 8, 18, 15, 1), false, seq(0.5)), null);
-  assert.deepEqual(S.tick(st, at(2026, 8, 18, 15, 3), true, seq(0.5)), { kind: 'pep' });
+  assert.deepEqual(S.tick(st, at(2026, 8, 18, 15, 3), true, seq(0.5)), { kind: 'pep', via: 'mac' });
   assert.equal(st.schedule.pepFired, true);
   assert.equal(S.tick(st, at(2026, 8, 18, 15, 4), true, seq(0.5)), null);
   // held past active end → dropped, not fired tomorrow morning
@@ -327,11 +327,11 @@ test('goodnight: off by default; when enabled fires once ~90 min after active en
   st.settings.goodnightEnabled = true;
   assert.equal(S.tick(st, at(2026, 8, 18, 23, 20), true, seq(0.5)), null); // too early (< end + 90 min)
   assert.equal(S.tick(st, at(2026, 8, 18, 23, 35), false, seq(0.5)), null); // absent
-  assert.deepEqual(S.tick(st, at(2026, 8, 18, 23, 35), true, seq(0.5)), { kind: 'goodnight' });
+  assert.deepEqual(S.tick(st, at(2026, 8, 18, 23, 35), true, seq(0.5)), { kind: 'goodnight', via: 'mac' });
   assert.equal(S.tick(st, at(2026, 8, 18, 23, 50), true, seq(0.5)), null); // once per night
   assert.equal(S.tick(st, at(2026, 8, 19, 1, 10), true, seq(0.5)), null);  // still the same night
   // next evening, after midnight this time
-  assert.deepEqual(S.tick(st, at(2026, 8, 20, 0, 40), true, seq(0.5)), { kind: 'goodnight' });
+  assert.deepEqual(S.tick(st, at(2026, 8, 20, 0, 40), true, seq(0.5)), { kind: 'goodnight', via: 'mac' });
   // too late into the night (past end + 6 h) → skipped
   assert.equal(S.tick(st, at(2026, 8, 21, 4, 30), true, seq(0.5)), null);
 });
@@ -367,4 +367,38 @@ test('recap switched off never accumulates a stale due time; switching on does n
   assert.equal(st.schedule.recapNextAt, at(2026, 8, 30, 18)); // rolled forward, not stale
   st.settings.recapEnabled = true;
   assert.equal(S.tick(st, at(2026, 8, 24, 9, 6), true, seq(0.5)), null);
+});
+
+// ---- phone channel (away from the Mac) ----
+test('tick with opts.phone delivers a due nudge via phone when absent, via mac when present', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.schedule.slots = [at(2026, 8, 18, 12)]; st.schedule.fired = [];
+  const f = S.tick(st, at(2026, 8, 18, 12, 1), false, seq(0.5), { phone: true });
+  assert.equal(f.kind, 'nudge'); assert.equal(f.via, 'phone');
+  st.schedule.slots = [at(2026, 8, 18, 15)]; st.schedule.fired = [];
+  const g = S.tick(st, at(2026, 8, 18, 15, 1), true, seq(0.5), { phone: true });
+  assert.equal(g.kind, 'nudge'); assert.equal(g.via, 'mac');
+});
+
+test('phone channel: still silent during quiet and outside active hours; goodnight never goes to the phone', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.schedule.slots = [at(2026, 8, 18, 12)]; st.schedule.fired = [];
+  S.setQuiet(st, at(2026, 8, 18, 11, 50), 'hours2');
+  assert.equal(S.tick(st, at(2026, 8, 18, 12, 1), false, seq(0.5), { phone: true }), null);
+  st.settings.goodnightEnabled = true;
+  st.schedule.quietUntil = null; st.schedule.slots = []; st.schedule.fired = [];
+  st.schedule.movieNextAt = at(2026, 9, 25, 19); st.schedule.recapNextAt = at(2026, 9, 27, 18);
+  assert.equal(S.tick(st, at(2026, 8, 18, 23, 40), false, seq(0.5), { phone: true }), null);
+  assert.equal(st.schedule.goodnightDate, null); // not consumed either
+});
+
+test('phone channel: movie and pep due while away go to the phone', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.schedule.slots = []; st.schedule.fired = [];
+  const m = S.tick(st, at(2026, 8, 21, 19, 5), false, seq(0.5), { phone: true }); // Fri movie
+  assert.deepEqual(m, { kind: 'movie', via: 'phone' });
+  st.settings.pepPerWeek = 7; st.schedule.pepAt = at(2026, 8, 21, 20); st.schedule.pepFired = false;
+  st.schedule.recapNextAt = at(2026, 9, 27, 18);
+  st.schedule.slots = []; st.schedule.fired = []; // Friday's freshly planned slots would pre-empt the pep
+  assert.deepEqual(S.tick(st, at(2026, 8, 21, 20, 1), false, seq(0.5), { phone: true }), { kind: 'pep', via: 'phone' });
 });

@@ -32,6 +32,26 @@
     catch { $('rateStatus').textContent = lastSummary; }
   };
 
+  // ---- iPhone (ntfy) ----
+  function renderPhone() {
+    const on = !!state.settings.phoneEnabled;
+    $('phoneEnabled').checked = on;
+    $('phoneSetup').hidden = !on;
+    $('phoneTopic').textContent = state.settings.phoneTopic || '';
+  }
+  $('phoneEnabled').onchange = async () => { state = await window.juliet.phoneEnable($('phoneEnabled').checked); renderPhone(); };
+  $('phoneNewTopic').onclick = async () => { state = await window.juliet.phoneNewTopic(); renderPhone(); $('phoneStatus').textContent = 'New topic. Re-subscribe in ntfy.'; };
+  $('phoneStore').onclick = () => window.juliet.phoneOpenStore();
+  $('phoneCopy').onclick = async () => {
+    try { await navigator.clipboard.writeText(state.settings.phoneTopic || ''); $('phoneStatus').textContent = 'Topic copied.'; }
+    catch { $('phoneStatus').textContent = state.settings.phoneTopic || ''; }
+  };
+  $('phoneTest').onclick = async () => {
+    $('phoneStatus').textContent = 'Sending…';
+    const r = await window.juliet.phoneTest();
+    $('phoneStatus').textContent = r.ok ? 'Sent. Check your iPhone.' : "Couldn't send. Are you online? Is the topic subscribed?";
+  };
+
   // ---- activities ----
   function actRow(a) {
     const tr = document.createElement('tr');
@@ -85,7 +105,7 @@
     $('goodnightEnabled').checked = !!s.goodnightEnabled;
     $('launchAtLogin').checked = !!s.launchAtLogin;
 
-    renderRate();
+    renderRate(); renderPhone();
 
     const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
     const n = (state.history || []).filter((h) => (!h.outcome || h.outcome === 'done') && h.at >= monthStart.getTime()).length;

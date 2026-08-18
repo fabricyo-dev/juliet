@@ -19,6 +19,7 @@
     <button data-tab="movies">Movies</button>
     <button data-tab="schedule">Schedule</button>
     <button data-tab="rate">Rate</button>
+    <button data-tab="phone">iPhone</button>
   </nav>
 </header>
 <main>
@@ -76,6 +77,20 @@
     <div class="row">
       <span class="spacer"></span>
       <button id="saveSchedule" class="primary">Save</button>
+    </div>
+  </section>
+  <section id="tab-phone" hidden>
+    <p class="hint">When something is due while you're away from the Mac, Juliet can ping your iPhone instead. At the Mac she still walks in — never both.</p>
+    <label><input id="phoneEnabled" type="checkbox"> Ping my iPhone when I'm away from the Mac</label>
+    <div id="phoneSetup" hidden>
+      <ol class="steps">
+        <li>Install the free <strong>ntfy</strong> app on your iPhone. <button id="phoneStore" class="ghost">Open App Store link</button></li>
+        <li>In ntfy tap <strong>+</strong> and subscribe to this topic (it's your private channel):
+          <div class="topicRow"><code id="phoneTopic"></code><button id="phoneCopy" class="ghost">Copy</button></div>
+        </li>
+        <li>Then <button id="phoneTest" class="primary">Send a test to my phone</button> <span id="phoneStatus" class="hint"></span></li>
+      </ol>
+      <p class="hint">Messages go through ntfy.sh (a public push service); the random topic name is what keeps them yours. Only the activity name or movie title is sent. <button id="phoneNewTopic" class="ghost">New topic</button></p>
     </div>
   </section>
   <section id="tab-rate" hidden>

@@ -9,6 +9,7 @@ const { createStore } = require('./store');
 const { defaultState, PLACEHOLDER_MOVIES, PEP_LINES, DEFAULT_ACTIVITIES } = require('./defaults');
 const { createPresence } = require('./presence');
 const R = require('./rating');
+const PH = require('./phone');
 
 const ASSETS = path.join(__dirname, '..', '..', 'assets');
 const PRELOAD = path.join(__dirname, '..', 'preload.js');
@@ -57,6 +58,7 @@ app.whenReady().then(() => {
   if (demo === 'welcome') setTimeout(() => fireWelcome(), 1500);
   if (demo === 'goodnight') setTimeout(() => fireGoodnight(), 1500);
   if (demo === 'gentle') setTimeout(() => fireNudge(undefined, true), 1500);
+  if (demo === 'phone') setTimeout(() => pushToPhone({ kind: 'nudge', via: 'phone' }), 1500);
   if (demo === 'settings') setTimeout(openSettings, 500);
 });
 app.on('window-all-closed', () => { /* keep running in the menu bar */ });
@@ -123,11 +125,15 @@ function tick() {
       if (presence.isPresent() && !overlay && !S.isQuiet(store.state, now)) fireWelcome();
       return;
     }
-    const fire = S.tick(store.state, now, presence.isPresent() && !overlay);
+    const here = presence.isPresent();
+    const phoneOk = !!store.state.settings.phoneEnabled && !!store.state.settings.phoneTopic;
+    // At the Mac → the cat (held while she's already on screen). Away → her iPhone, if she set that up.
+    const fire = S.tick(store.state, now, here && !overlay, undefined, { phone: phoneOk && !here });
     store.save();
     const quietNow = S.isQuiet(store.state, now);
     if (quietNow !== trayShowedQuiet) { trayShowedQuiet = quietNow; refreshTrayMenu(); }
     if (!fire) return;
+    if (fire.via === 'phone') { pushToPhone(fire); return; }
     if (fire.kind === 'movie') fireMovie();
     else if (fire.kind === 'recap') fireRecap();
     else if (fire.kind === 'pep') firePep();
@@ -280,6 +286,48 @@ function firePep() {
     buttons: [{ id: 'ack', label: 'Thanks, Juliet' }],
   });
 }
+
+// ---------- iPhone (ntfy) ----------
+async function pushToPhone(fire) {
+  const st = store.state;
+  let msg;
+  if (fire.kind === 'nudge') {
+    const a = st.activities.find((x) => x.id === fire.activityId) || S.chooseActivity(st.activities, st.schedule.recent);
+    if (!a) return;
+    msg = PH.buildPhoneMessage({ kind: 'nudge', activity: a });
+  } else if (fire.kind === 'movie') {
+    const cleaned = { unseen: L.cleanMovieList(st.movies.unseen.join('\n'), PLACEHOLDER_MOVIES), seen: st.movies.seen };
+    const r = L.pickMovie(cleaned);
+    if (!r) return;
+    st.movies = r.movies; store.save();
+    msg = PH.buildPhoneMessage({ kind: 'movie', title: r.title });
+  } else if (fire.kind === 'pep') {
+    msg = PH.buildPhoneMessage({ kind: 'pep', line: Math.random() < 0.5 ? PEP_LINES[0] : PEP_LINES[Math.floor(Math.random() * PEP_LINES.length)] });
+  } else if (fire.kind === 'recap') {
+    msg = PH.buildPhoneMessage({ kind: 'recap', line: S.recapSummary(st.history, Date.now()).line });
+  } else return;
+  const ok = await PH.sendPhone(st.settings, msg);
+  if (!ok) console.error('phone push failed for', fire.kind);
+}
+ipcMain.handle('phone:enable', (_e, on) => {
+  const s = store.state.settings;
+  s.phoneEnabled = !!on;
+  if (s.phoneEnabled && !s.phoneTopic) s.phoneTopic = PH.makeTopic();
+  store.save();
+  return publicState();
+});
+ipcMain.handle('phone:newTopic', () => {
+  store.state.settings.phoneTopic = PH.makeTopic();
+  store.save();
+  return publicState();
+});
+ipcMain.handle('phone:test', async () => {
+  const s = store.state.settings;
+  if (!s.phoneTopic) return { ok: false, reason: 'no topic' };
+  const ok = await PH.sendPhone(s, PH.buildPhoneMessage({ kind: 'test' }));
+  return { ok };
+});
+ipcMain.handle('phone:openStore', () => shell.openExternal('https://apps.apple.com/app/ntfy/id1625396347'));
 
 async function openAll(urls) {
   try {
