@@ -56,6 +56,16 @@ const PEP_LINES = [
   "Don't drop your jewellery — it's hard to find. And even though it shines, it doesn't shine as bright as you.",
   "You should be the prime minister of the world.",
   "AI (Areej Intelligence) for the win.",
+  "I should have given you that Funko Pop.",
+  "You're as perfect as the Apple ecosystem.",
+  "You go, best pianist ever.",
+  "No cat would ever scratch you on purpose.",
+  "Free Palestine, meow!",
+  "You're a better writer than Sylvia Plath.",
+  "Linguini is me.",
+  "You're like Barbie — you can do anything.",
+  "At least you're not a man. (I can't believe I wrote that.)",
+  "Don't give up on men, though. In the end, I'm one.",
   "You are the smartest, most talented, well-spoken person in any room. Stop overthinking and go.",
   "Quick reminder from your cat: you've got this. Smartest, most talented, best-spoken — that's you.",
   "Overthinking is just talent with nowhere to go. Point it at one thing and start.",
@@ -64,7 +74,7 @@ const PEP_LINES = [
   "The version of you that's worried and the version that's brilliant are the same person. Send the brilliant one.",
   "Deep breath. Smartest person you know is reading this.",
 ];
-const PEP_MIRZA_COUNT = 13;
+const PEP_MIRZA_COUNT = 23;
 
 const MORNING_LINES = [
   'Coffee first. Then one small thing.',
