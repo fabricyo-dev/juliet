@@ -1,22 +1,33 @@
 'use strict';
 
+// Built around what an Ivy CS application actually rewards: one flagship BUILD, real COMPETE/RESEARCH
+// depth, LEADERSHIP with numbers, and a running LOG so it can all be written down later.
 const DEFAULT_ACTIVITIES = [
-  { id: 'cs50', name: 'CS50x — next lecture / problem set', url: 'https://cs50.harvard.edu/x/' },
-  { id: 'leetcode', easy: true, name: 'LeetCode daily problem', url: 'https://leetcode.com/problemset/' },
-  { id: 'github', name: 'Push a commit to your GitHub project', url: 'https://github.com/' },
-  { id: 'fcc', name: 'freeCodeCamp — one lesson', url: 'https://www.freecodecamp.org/learn/' },
+  // build
+  { id: 'flagship', name: 'Flagship project — 25 minutes on it', url: 'https://github.com/' },
+  { id: 'devlog', easy: true, name: 'Dev log — 5 lines on what you built this week', url: 'https://github.com/' },
+  { id: 'ship', name: 'Ship something small (deploy, README, demo video)', url: 'https://github.com/' },
+  // compete
   { id: 'usaco', name: 'USACO Guide — one module', url: 'https://usaco.guide/' },
-  { id: 'aoc', name: 'Advent of Code — one puzzle', url: 'https://adventofcode.com/' },
   { id: 'codeforces', name: 'Codeforces — one problem', url: 'https://codeforces.com/problemset' },
+  { id: 'leetcode', easy: true, name: 'LeetCode daily problem', url: 'https://leetcode.com/problemset/' },
+  { id: 'aoc', name: 'Advent of Code — one puzzle', url: 'https://adventofcode.com/' },
   { id: 'kaggle', name: 'Kaggle Learn — one lesson', url: 'https://www.kaggle.com/learn' },
-  { id: 'devpost', easy: true, name: 'Devpost — check upcoming hackathons', url: 'https://devpost.com/hackathons' },
+  // research
+  { id: 'arxiv', easy: true, name: 'arXiv cs.LG — read one abstract, note one idea', url: 'https://arxiv.org/list/cs.LG/new' },
+  { id: 'prof', name: 'Email one professor about research (NYUAD / AUS / Khalifa)', url: 'https://mail.google.com/' },
   { id: 'ocw1806', name: 'MIT OCW 18.06 Linear Algebra — one lecture', url: 'https://ocw.mit.edu/courses/18-06-linear-algebra-spring-2010/' },
-  { id: 'arxiv', easy: true, name: 'arXiv cs.LG — read one abstract', url: 'https://arxiv.org/list/cs.LG/new' },
   { id: '3b1b', easy: true, name: '3Blue1Brown — one video', url: 'https://www.3blue1brown.com/' },
-  { id: 'euler', easy: true, name: 'Project Euler — one problem', url: 'https://projecteuler.net/archives' },
-  { id: 'gwc', easy: true, name: 'Girls Who Code — check clubs / events', url: 'https://girlswhocode.com/' },
-  { id: 'club', name: 'Coding club: message the group / plan a session', url: 'https://mail.google.com/' },
-  { id: 'tutor', name: 'Tutor someone for 30 min (Khan Academy)', url: 'https://www.khanacademy.org/computing' },
+  { id: 'cs50', name: 'CS50x — next lecture / problem set', url: 'https://cs50.harvard.edu/x/' },
+  // lead & teach
+  { id: 'slo', name: 'SLO — plan this week\'s session, write down the goal', url: 'https://mail.google.com/' },
+  { id: 'tutor', name: 'Peer tutoring — one session, log the hours', url: 'https://www.khanacademy.org/computing' },
+  { id: 'club', name: 'Coding club — message the group / recruit one more person', url: 'https://mail.google.com/' },
+  { id: 'technovation', easy: true, name: 'Technovation Girls — check the season, rally a team', url: 'https://www.technovation.org/' },
+  { id: 'gwc', easy: true, name: 'Girls Who Code — clubs / events near you', url: 'https://girlswhocode.com/' },
+  { id: 'devpost', easy: true, name: 'Devpost — one hackathon to sign up for', url: 'https://devpost.com/hackathons' },
+  // the log
+  { id: 'log', easy: true, name: 'Activity log — what, hours, impact (future-you writes the Common App from this)', url: 'https://docs.google.com/document/' },
 ].map((a) => ({ ...a, enabled: true }));
 
 const DEFAULT_SETTINGS = {

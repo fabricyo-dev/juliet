@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { createStore, loadState } = require('../src/main/store');
-const { defaultState } = require('../src/main/defaults');
+const { defaultState, DEFAULT_ACTIVITIES } = require('../src/main/defaults');
 
 function tmpFile() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'juliet-'));
@@ -16,7 +16,7 @@ test('loadState returns defaults when file is missing', () => {
   const { state, recovered } = loadState(tmpFile(), defaultState);
   assert.equal(recovered, false);
   assert.equal(state.settings.nudgesPerDay, 3);
-  assert.equal(state.activities.length, 16);
+  assert.equal(state.activities.length, DEFAULT_ACTIVITIES.length);
 });
 
 test('save then load round-trips and fills missing keys from defaults', () => {
@@ -34,7 +34,7 @@ test('save then load round-trips and fills missing keys from defaults', () => {
   assert.equal(state.settings.nudgesPerDay, 5);
   assert.equal(state.settings.activeStart, '09:00'); // filled
   assert.deepEqual(state.movies, { unseen: ['Her'], seen: [] });
-  assert.equal(state.activities.length, 16); // filled
+  assert.equal(state.activities.length, DEFAULT_ACTIVITIES.length); // filled
   assert.deepEqual(state.schedule.slots, []);
 });
 

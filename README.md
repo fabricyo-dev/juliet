@@ -18,7 +18,7 @@ Dev shortcuts: `JULIET_DEMO=nudge|gentle|movie|recap|pep|checkin|morning|stroll|
 npm run dist
 ```
 
-Produces `dist/Juliet-1.2.0-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Silicon). The app is **unsigned** (no Apple developer account).
+Produces `dist/Juliet-1.2.1-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Silicon). The app is **unsigned** (no Apple developer account).
 
 **First open on Areej's Mac:** open the `.dmg`, drag Juliet to Applications, then **right-click → Open → Open**. If macOS still refuses: System Settings → Privacy & Security → scroll down → **Open Anyway**. After that she launches at login on her own — look for the little cat in the menu bar.
 
@@ -28,6 +28,8 @@ Produces `dist/Juliet-1.2.0-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Si
 - **Opening the app** (double-click Juliet in Applications, or the menu-bar cat → Settings…) shows the Settings window: Activities / Movies / Schedule / Rate, with a big **Call Juliet** button at the top that summons her right now. The automatic launch at login stays silent in the menu bar. She also shows up on her own (see below).
 
 ## Rules of the cat
+
+- **Default activities** are built around what a CS application actually rewards: one flagship *build* (project, dev log, ship something), *compete/research* depth (USACO, Codeforces, LeetCode, AoC, Kaggle, arXiv, emailing a professor, OCW, 3B1B, CS50), *leading and teaching with numbers* (SLO session, peer tutoring, coding club, Technovation Girls, Girls Who Code, hackathons), and an *activity log* so it can all be written down for the Common App later. Edit freely in Settings → Activities; "Restore defaults" brings this set back.
 
 - *N* nudges/day (default 3) at random times inside active hours (default 09:00–22:00). A nudge fires only when the Mac is awake, unlocked, and used in the last 5 minutes. A slot that comes due while she's away is held and fires when she's back (if still inside hours); otherwise it's dropped. Slots never stack.
 - **Open** = launches the link. **Later** = comes back in 1 h. **Did it** = logged (count in Settings → Schedule). Clicking Juliet herself = petting: she purrs and keeps her message. Ignored for 90 s → she walks off.
