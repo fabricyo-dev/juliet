@@ -15,4 +15,6 @@ contextBridge.exposeInMainWorld('juliet', {
   testMovie: () => ipcRenderer.invoke('settings:testMovie'),
   restoreDefaults: () => ipcRenderer.invoke('settings:restoreDefaults'),
   unpickMovie: (title) => ipcRenderer.invoke('settings:unpickMovie', String(title)),
+  rate: (value) => ipcRenderer.invoke('settings:rate', Number(value)),
+  onTab: (cb) => ipcRenderer.on('settings:tab', (_e, tab) => cb(tab)),
 });

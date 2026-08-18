@@ -13,6 +13,7 @@
     <button data-tab="activities" class="on">Activities</button>
     <button data-tab="movies">Movies</button>
     <button data-tab="schedule">Schedule</button>
+    <button data-tab="rate">Rate</button>
   </nav>
 </header>
 <main>
@@ -72,6 +73,23 @@
       <span class="spacer"></span>
       <button id="saveSchedule" class="primary">Save</button>
     </div>
+  </section>
+  <section id="tab-rate" hidden>
+    <p class="hint">How's Juliet doing? Slide, then send. Juliet will react. "Copy for Mirza" puts a one-liner on your clipboard.</p>
+    <div id="rateBox">
+      <div id="rateValue">7</div>
+      <div id="rateLabel"></div>
+      <input id="rateSlider" type="range" min="1" max="10" step="1" value="7">
+      <div class="scale"><span>1</span><span>10</span></div>
+    </div>
+    <div class="row">
+      <button id="sendRating" class="primary">Send rating</button>
+      <button id="copyRating" class="ghost" disabled>Copy for Mirza</button>
+      <span class="spacer"></span>
+      <span id="rateStatus" class="hint"></span>
+    </div>
+    <h3>Past ratings <small id="rateCount"></small></h3>
+    <ul id="rateHistory"></ul>
   </section>
 </main>
 <script src="settings.js"></script>

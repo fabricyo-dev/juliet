@@ -45,3 +45,12 @@ button.x { padding: 1px 7px; box-shadow: none; line-height: 1.2; }
 ul#seen { padding-left: 18px; margin: 0; }
 ul#seen li { margin: 2px 0; }
 ul#seen button { margin-left: 8px; font-size: 11px; padding: 1px 6px; box-shadow: none; }
+
+/* rate tab */
+#rateBox { border: 2px solid #2b2b33; border-radius: 6px; background: #fff; padding: 16px 16px 10px; box-shadow: 4px 4px 0 #2b2b33; }
+#rateValue { font-size: 40px; font-weight: 700; line-height: 1; }
+#rateLabel { min-height: 2.6em; margin: 6px 0 10px; font-size: 15px; font-weight: 600; }
+#rateSlider { width: 100%; accent-color: #f29bb0; }
+.scale { display: flex; justify-content: space-between; color: #5a5a66; font-size: 11px; }
+ul#rateHistory { padding-left: 18px; margin: 0; }
+ul#rateHistory li { margin: 2px 0; }

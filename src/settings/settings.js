@@ -4,12 +4,43 @@
   let state = null;
 
   // tabs
-  document.querySelectorAll('nav button').forEach((b) => {
-    b.onclick = () => {
-      document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('on', x === b));
-      document.querySelectorAll('main section').forEach((s) => { s.hidden = s.id !== `tab-${b.dataset.tab}`; });
-    };
-  });
+  function showTab(name) {
+    document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('on', x.dataset.tab === name));
+    document.querySelectorAll('main section').forEach((s) => { s.hidden = s.id !== `tab-${name}`; });
+  }
+  document.querySelectorAll('nav button').forEach((b) => { b.onclick = () => showTab(b.dataset.tab); });
+  if (location.hash === '#rate') showTab('rate');
+  window.juliet.onTab((t) => showTab(t));
+
+  // ---- rate Juliet ----
+  let lastSummary = '';
+  function renderRate() {
+    const v = parseInt($('rateSlider').value, 10);
+    $('rateValue').textContent = String(v);
+    $('rateLabel').textContent = ((state && state.ratingLabels) || [])[v - 1] || '';
+  }
+  function renderRateHistory() {
+    const rs = state.ratings || [];
+    $('rateCount').textContent = rs.length ? `(${rs.length})` : '';
+    $('rateHistory').replaceChildren(...rs.slice(-8).reverse().map((r) => {
+      const li = document.createElement('li');
+      const d = new Date(r.at);
+      li.textContent = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} — ${r.value}/10, "${(state.ratingLabels || [])[r.value - 1] || ''}"`;
+      return li;
+    }));
+  }
+  $('rateSlider').oninput = renderRate;
+  $('sendRating').onclick = async () => {
+    const res = await window.juliet.rate($('rateSlider').value);
+    lastSummary = res.summary || '';
+    state = res; renderRateHistory();
+    $('rateStatus').textContent = 'Sent. Juliet is on her way.';
+    $('copyRating').disabled = !lastSummary;
+  };
+  $('copyRating').onclick = async () => {
+    try { await navigator.clipboard.writeText(lastSummary); $('rateStatus').textContent = 'Copied. Paste it to Mirza.'; }
+    catch { $('rateStatus').textContent = lastSummary; }
+  };
 
   // ---- activities ----
   function actRow(a) {
@@ -63,6 +94,8 @@
     $('recapTime').value = s.recapTime;
     $('goodnightEnabled').checked = !!s.goodnightEnabled;
     $('launchAtLogin').checked = !!s.launchAtLogin;
+
+    renderRate(); renderRateHistory();
 
     const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
     const n = (state.history || []).filter((h) => (!h.outcome || h.outcome === 'done') && h.at >= monthStart.getTime()).length;

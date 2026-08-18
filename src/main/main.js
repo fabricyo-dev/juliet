@@ -8,6 +8,7 @@ const L = require('./links');
 const { createStore } = require('./store');
 const { defaultState, PLACEHOLDER_MOVIES, PEP_LINES, DEFAULT_ACTIVITIES } = require('./defaults');
 const { createPresence } = require('./presence');
+const R = require('./rating');
 
 const ASSETS = path.join(__dirname, '..', '..', 'assets');
 const PRELOAD = path.join(__dirname, '..', 'preload.js');
@@ -76,6 +77,7 @@ function refreshTrayMenu() {
     { label: 'Send Juliet now', click: () => fireNudge() },
     { label: 'Pick a movie now', click: () => fireMovie() },
     { label: 'Pep talk now', click: () => firePep() },
+    { label: 'Rate Juliet…', click: () => openSettings('rate') },
     {
       label: quietLabel,
       submenu: [
@@ -311,7 +313,7 @@ ipcMain.on('overlay:action', async (_e, id) => {
       } else { // skip / ack / timeout: she didn't watch it — put it back
         store.state.movies = L.unpickMovie(store.state.movies, title); store.save(); leave(false);
       }
-    } else if (current.kind === 'pep' || current.kind === 'goodnight') {
+    } else if (current.kind === 'pep' || current.kind === 'goodnight' || current.kind === 'rating') {
       leave(false); // any click (or the timeout) — she said her piece
     } else if (current.kind === 'welcome') {
       if (id === 'settings') openSettings();
@@ -334,13 +336,17 @@ ipcMain.on('overlay:action', async (_e, id) => {
 });
 
 // ---------- settings ----------
-function openSettings() {
-  if (settingsWin) { settingsWin.show(); settingsWin.focus(); return; }
+function openSettings(tab) {
+  if (settingsWin) {
+    settingsWin.show(); settingsWin.focus();
+    if (tab) settingsWin.webContents.send('settings:tab', tab);
+    return;
+  }
   settingsWin = new BrowserWindow({
     width: 560, height: 680, minWidth: 480, minHeight: 520, title: 'Juliet — Settings', show: false,
     webPreferences: { preload: PRELOAD, contextIsolation: true, nodeIntegration: false, sandbox: true },
   });
-  settingsWin.loadFile(path.join(__dirname, '..', 'settings', 'settings.html'));
+  settingsWin.loadFile(path.join(__dirname, '..', 'settings', 'settings.html'), tab ? { hash: tab } : undefined);
   settingsWin.once('ready-to-show', () => { settingsWin.show(); if (app.dock) app.dock.show(); });
   settingsWin.on('closed', () => { settingsWin = null; if (app.dock) app.dock.hide(); });
 }
@@ -350,7 +356,27 @@ function normalizeUrl(u) {
   return /^[a-z][a-z0-9+.-]*:/i.test(u) ? u : `https://${u}`;
 }
 
-ipcMain.handle('settings:get', () => ({ ...store.state, recovered: store.recovered, placeholders: PLACEHOLDER_MOVIES }));
+function publicState() {
+  return { ...store.state, recovered: store.recovered, placeholders: PLACEHOLDER_MOVIES, ratingLabels: R.RATING_LABELS };
+}
+ipcMain.handle('settings:get', () => publicState());
+ipcMain.handle('settings:rate', (_e, value) => {
+  const n = R.clampRating(value);
+  if (n === null) return publicState();
+  const now = Date.now();
+  store.state.ratings = [...(store.state.ratings || []), { value: n, at: now }].slice(-200);
+  store.save();
+  if (!overlay) {
+    current = { kind: 'rating' };
+    sendShow({
+      kind: 'rating',
+      title: `${n}/10 — ${R.ratingLabel(n)}`,
+      line: R.ratingReaction(n),
+      buttons: [{ id: 'ack', label: n >= 9 ? 'You earned it' : 'OK' }],
+    });
+  }
+  return { ...publicState(), summary: R.ratingSummary(n, now) };
+});
 ipcMain.handle('settings:save', (_e, patch) => {
   const st = store.state;
   patch = patch || {};
@@ -396,17 +422,17 @@ ipcMain.handle('settings:save', (_e, patch) => {
   if (patch.clearSeen) st.movies = { unseen: [...st.movies.unseen, ...st.movies.seen], seen: [] };
   store.save();
   tick();
-  return { ...store.state, recovered: store.recovered, placeholders: PLACEHOLDER_MOVIES };
+  return publicState();
 });
 ipcMain.handle('settings:testNudge', () => { fireNudge(); return true; });
 ipcMain.handle('settings:testMovie', () => { fireMovie(); return true; });
 ipcMain.handle('settings:restoreDefaults', () => {
   store.state.activities = DEFAULT_ACTIVITIES.map((a) => ({ ...a }));
   store.save();
-  return { ...store.state, recovered: store.recovered, placeholders: PLACEHOLDER_MOVIES };
+  return publicState();
 });
 ipcMain.handle('settings:unpickMovie', (_e, title) => {
   store.state.movies = L.unpickMovie(store.state.movies, title);
   store.save();
-  return { ...store.state, recovered: store.recovered, placeholders: PLACEHOLDER_MOVIES };
+  return publicState();
 });

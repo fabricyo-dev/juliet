@@ -52,6 +52,7 @@ function defaultState() {
     activities: DEFAULT_ACTIVITIES.map((a) => ({ ...a })),
     movies: { unseen: [...PLACEHOLDER_MOVIES], seen: [] },
     history: [],
+    ratings: [],       // {value 1–10, at}
     schedule: { planDate: null, slots: [], fired: [], snoozed: [], recent: [], movieNextAt: null, recapNextAt: null, quietUntil: null, pepAt: null, pepFired: false, goodnightDate: null },
   };
 }
