@@ -65,7 +65,7 @@ const PEP_LINES = [
   "Linguini is me.",
   "You're like Barbie — you can do anything.",
   "At least you're not a man. (I can't believe I wrote that.)",
-  "Don't give up on men, though. In the end, I'm one.",
+  "Don't give up on men — at the end of the day, I'm one. Huh? What? Meow. I'm Juliet.",
   "You are the smartest, most talented, well-spoken person in any room. Stop overthinking and go.",
   "Quick reminder from your cat: you've got this. Smartest, most talented, best-spoken — that's you.",
   "Overthinking is just talent with nowhere to go. Point it at one thing and start.",
