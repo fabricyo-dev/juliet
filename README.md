@@ -10,7 +10,7 @@ npm start
 npm test
 ```
 
-Dev shortcuts: `JULIET_DEMO=nudge npm start`, `JULIET_DEMO=movie npm start`, `JULIET_DEMO=settings npm start` trigger that thing ~1.5 s after launch.
+Dev shortcuts: `JULIET_DEMO=nudge|movie|recap|settings npm start` triggers that thing ~1.5 s after launch.
 
 ## Build the Mac app
 
@@ -47,7 +47,7 @@ Every appearance follows `juliet-animations.json`:
 3. `talkToUser` loops (frames 5–8); the `speechStart` event on frame 5 reveals the code-rendered speech bubble. The text is whatever the app sends (nudge or movie); `"Hi!"` is only the manifest's preview default.
 4. On a button click / cat click / 90 s timeout: `turnBackRight` (frames 4→1), then `resumeWalkRight` walks her off the right edge.
 
-"Did it" adds a small CSS bounce before she turns back. `src/shared/juliet-anim.js` mirrors the manifest; `test/anim.test.js` fails if the two ever drift, and decodes the sheets to check dimensions and that every frame's feet land on the anchor row.
+"Did it" shows a one-line cheer in the bubble before she turns back (the sprite itself is never transformed). `src/shared/juliet-anim.js` mirrors the manifest; `test/anim.test.js` fails if the two ever drift, and decodes the sheets to check dimensions and that every frame's feet land on the anchor row.
 
 `npm run icons` regenerates `assets/icon.png` (talk frame 5 on a plate) and the menu-bar template glyph (`trayTemplate.png` / `@2x`, her head silhouette) from those sheets. Preview any state in a plain browser: `src/overlay/overlay.html?demo=hi|nudge|movie`.
 
