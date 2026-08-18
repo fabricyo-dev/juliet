@@ -9,7 +9,7 @@
   const TIMEOUT_MS = 90_000;                            // ignored bubble → she leaves
   const EDGE = 200;                                     // px from a screen edge where the bubble edge-anchors
   const CHEER_MS = 1100;                                // "Did it": a short cheer in the bubble before she turns back
-  const CHEERS = ["Nice one, Areej! 🎉", "That's the way! ✨", "Look at you go. 💪"];
+  const CHEERS = ["Nice one, Areej!", "That's the way.", "Look at you go."];
   const ACTED_WATCHDOG_MS = 8000;                       // max wait for main's overlay:leave after an action
 
   const hit = document.getElementById('hit');

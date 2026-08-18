@@ -1,4 +1,4 @@
-# Juliet 🐾
+# Juliet
 
 A gray-and-white pixel cat who lives in Areej's menu bar. A few times a day — only while she's actually at the Mac — Juliet walks across the bottom of the screen and suggests one extracurricular; click **Open** and you're there. Once a week she picks a movie from the watch-list and opens Google + Netflix search for it.
 
