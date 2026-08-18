@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { PEP_LINES, PEP_MIRZA_COUNT, MORNING_LINES } = require('../src/main/defaults');
+const { PEP_LINES, PEP_MIRZA_COUNT, pickPepLine, MORNING_LINES } = require('../src/main/defaults');
 
 test('pep + morning lines: no emojis, non-empty, Mirza\'s lines lead', () => {
   assert.ok(PEP_LINES.length >= PEP_MIRZA_COUNT + 1);
@@ -23,4 +23,13 @@ test('pep + morning lines: no emojis, non-empty, Mirza\'s lines lead', () => {
   assert.equal(PEP_MIRZA_COUNT, 23);
   assert.match(PEP_LINES[7], /door with a key/);
   assert.match(PEP_LINES[10], /jewellery/);
+});
+
+test('pickPepLine(onlyMirza) never leaves Mirza\'s lines; mixed mode can reach the rest', () => {
+  const mirza = new Set(PEP_LINES.slice(0, PEP_MIRZA_COUNT));
+  for (let i = 0; i < 200; i++) assert.ok(mirza.has(pickPepLine(true)));
+  let sawOther = false;
+  for (let i = 0; i < 500; i++) if (!mirza.has(pickPepLine(false))) sawOther = true;
+  assert.ok(sawOther);
+  assert.equal(pickPepLine(false, () => 0.9), PEP_LINES[PEP_LINES.length - 1] === undefined ? undefined : PEP_LINES[Math.floor(0.9 * PEP_LINES.length)]);
 });

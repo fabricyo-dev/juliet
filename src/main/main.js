@@ -6,7 +6,7 @@ const {
 const S = require('./scheduler');
 const L = require('./links');
 const { createStore } = require('./store');
-const { defaultState, PLACEHOLDER_MOVIES, PEP_LINES, PEP_MIRZA_COUNT, MORNING_LINES, DEFAULT_ACTIVITIES } = require('./defaults');
+const { defaultState, PLACEHOLDER_MOVIES, pickPepLine, MORNING_LINES, DEFAULT_ACTIVITIES } = require('./defaults');
 const { createPresence } = require('./presence');
 const R = require('./rating');
 const PH = require('./phone');
@@ -55,6 +55,7 @@ app.whenReady().then(() => {
   if (demo === 'movie') setTimeout(() => fireMovie(), 1500);
   if (demo === 'recap') setTimeout(() => fireRecap(), 1500);
   if (demo === 'pep') setTimeout(() => firePep(), 1500);
+  if (demo === 'mirza') setTimeout(() => firePep(true), 1500);
   if (demo === 'welcome') setTimeout(() => fireWelcome(), 1500);
   if (demo === 'goodnight') setTimeout(() => fireGoodnight(), 1500);
   if (demo === 'gentle') setTimeout(() => fireNudge(undefined, true), 1500);
@@ -93,6 +94,7 @@ function refreshTrayMenu() {
     { label: 'Send Juliet now', click: () => fireNudge() },
     { label: 'Pick a movie now', click: () => fireMovie() },
     { label: 'Pep talk now', click: () => firePep() },
+    { label: 'A word from Mirza', click: () => firePep(true) },
     { label: 'Rate Juliet…', click: () => openSettings('rate') },
     {
       label: quietLabel,
@@ -318,18 +320,13 @@ function fireFollowup(title) {
     buttons: [{ id: 'loved', label: 'Loved it' }, { id: 'meh', label: 'Meh' }, { id: 'didnt', label: "Didn't watch" }],
   });
 }
-// Mirza's own lines two times out of three; the rest of the time anything from the list.
-function pickPepLine() {
-  const pool = Math.random() < 0.67 ? PEP_LINES.slice(0, PEP_MIRZA_COUNT) : PEP_LINES;
-  return pool[Math.floor(Math.random() * pool.length)];
-}
-function firePep() {
+function firePep(onlyMirza = false) {
   if (overlay) return;
   current = { kind: 'pep' };
   sendShow({
     kind: 'pep',
-    title: 'Hey Areej.',
-    line: pickPepLine(),
+    title: onlyMirza ? 'A word from Mirza.' : 'Hey Areej.',
+    line: pickPepLine(onlyMirza),
     buttons: [{ id: 'ack', label: 'Thanks, Juliet' }],
   });
 }
@@ -553,6 +550,7 @@ ipcMain.handle('settings:save', (_e, patch) => {
   return publicState();
 });
 ipcMain.handle('settings:testNudge', () => fireNudge()); // false = she's already on screen
+ipcMain.handle('settings:pepMirza', () => { if (overlay) return false; firePep(true); return true; });
 ipcMain.handle('settings:testMovie', () => { fireMovie(); return true; });
 ipcMain.handle('settings:restoreDefaults', () => {
   store.state.activities = DEFAULT_ACTIVITIES.map((a) => ({ ...a }));

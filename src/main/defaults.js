@@ -75,6 +75,12 @@ const PEP_LINES = [
   "Deep breath. Smartest person you know is reading this.",
 ];
 const PEP_MIRZA_COUNT = 23;
+// onlyMirza → one of his lines; otherwise his lines two times out of three, anything the rest of the time.
+function pickPepLine(onlyMirza = false, rng = Math.random) {
+  const mirza = PEP_LINES.slice(0, PEP_MIRZA_COUNT);
+  const pool = onlyMirza || rng() < 0.67 ? mirza : PEP_LINES;
+  return pool[Math.min(pool.length - 1, Math.floor(rng() * pool.length))];
+}
 
 const MORNING_LINES = [
   'Coffee first. Then one small thing.',
@@ -101,4 +107,4 @@ function defaultState() {
   };
 }
 
-module.exports = { DEFAULT_ACTIVITIES, DEFAULT_SETTINGS, PLACEHOLDER_MOVIES, PEP_LINES, PEP_MIRZA_COUNT, MORNING_LINES, defaultState };
+module.exports = { DEFAULT_ACTIVITIES, DEFAULT_SETTINGS, PLACEHOLDER_MOVIES, PEP_LINES, PEP_MIRZA_COUNT, pickPepLine, MORNING_LINES, defaultState };

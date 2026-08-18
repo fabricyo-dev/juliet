@@ -132,6 +132,11 @@
   $('saveMovies').onclick = () => save({ moviesText: $('movies').value });
   $('clearSeen').onclick = () => save({ clearSeen: true });
   $('testMovie').onclick = () => window.juliet.testMovie();
+  $('pepMirza').onclick = async () => {
+    const sent = await window.juliet.pepMirza();
+    $('callStatus').textContent = sent ? 'On her way.' : "She's already out — look at the bottom of your screen.";
+    setTimeout(() => { $('callStatus').textContent = ''; }, 6000);
+  };
   $('callJuliet').onclick = async () => {
     const sent = await window.juliet.testNudge();
     $('callStatus').textContent = sent ? 'On her way.' : "She's already out — look at the bottom of your screen.";
