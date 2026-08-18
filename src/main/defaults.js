@@ -54,6 +54,8 @@ const PEP_LINES = [
   "Don't forget to switch off the lights in the electric car room.",
   "You've got this, bonita.",
   "Don't drop your jewellery — it's hard to find. And even though it shines, it doesn't shine as bright as you.",
+  "You should be the prime minister of the world.",
+  "AI (Areej Intelligence) for the win.",
   "You are the smartest, most talented, well-spoken person in any room. Stop overthinking and go.",
   "Quick reminder from your cat: you've got this. Smartest, most talented, best-spoken — that's you.",
   "Overthinking is just talent with nowhere to go. Point it at one thing and start.",
@@ -62,7 +64,7 @@ const PEP_LINES = [
   "The version of you that's worried and the version that's brilliant are the same person. Send the brilliant one.",
   "Deep breath. Smartest person you know is reading this.",
 ];
-const PEP_MIRZA_COUNT = 11;
+const PEP_MIRZA_COUNT = 13;
 
 const MORNING_LINES = [
   'Coffee first. Then one small thing.',
