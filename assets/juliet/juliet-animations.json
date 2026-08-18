@@ -1,0 +1,64 @@
+{
+  "character": "Juliet",
+  "defaultSpeech": "Hi!",
+  "speechTextIsRuntimeEditable": true,
+  "animations": {
+    "walkRight": {
+      "sheet": "walk/juliet-walk-spritesheet.png",
+      "metadata": "walk/juliet-walk-spritesheet.json",
+      "frames": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "loop": true
+    },
+    "turnToUser": {
+      "sheet": "turn-talk/juliet-turn-talk-spritesheet.png",
+      "frames": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "loop": false
+    },
+    "talkToUser": {
+      "sheet": "turn-talk/juliet-turn-talk-spritesheet.png",
+      "frames": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "loop": true,
+      "events": [
+        {
+          "frame": 5,
+          "type": "speechStart"
+        }
+      ]
+    },
+    "turnBackRight": {
+      "sheet": "turn-talk/juliet-turn-talk-spritesheet.png",
+      "frames": [
+        4,
+        3,
+        2,
+        1
+      ],
+      "loop": false,
+      "events": [
+        {
+          "after": 1,
+          "type": "resumeWalkRight"
+        }
+      ]
+    }
+  }
+}

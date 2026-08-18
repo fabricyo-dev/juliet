@@ -1,0 +1,337 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const S = require('../src/main/scheduler');
+const { defaultState } = require('../src/main/defaults');
+
+const at = (y, mo, d, h = 0, mi = 0) => new Date(y, mo - 1, d, h, mi).getTime();
+const seq = (...vals) => { let i = 0; return () => vals[i++ % vals.length]; };
+const MIN = 60_000, H = 3_600_000;
+
+test('parseHM', () => { assert.equal(S.parseHM('09:30'), 570); assert.equal(S.parseHM('22:00'), 1320); });
+
+test('activeWindow uses local day of the given time', () => {
+  const w = S.activeWindow({ activeStart: '09:00', activeEnd: '22:00' }, at(2026, 8, 18, 3));
+  assert.equal(w.start, at(2026, 8, 18, 9)); assert.equal(w.end, at(2026, 8, 18, 22));
+});
+
+test('planDay: N sorted times inside window, spaced', () => {
+  const settings = { nudgesPerDay: 3, activeStart: '09:00', activeEnd: '22:00' };
+  for (let k = 0; k < 50; k++) {
+    const slots = S.planDay(settings, at(2026, 8, 18), Math.random);
+    assert.equal(slots.length, 3);
+    for (const t of slots) assert.ok(t >= at(2026, 8, 18, 9) && t < at(2026, 8, 18, 22));
+    for (let i = 1; i < slots.length; i++) assert.ok(slots[i] - slots[i - 1] >= 45 * MIN, 'spacing');
+  }
+});
+
+test('movieDueAt: next Friday 19:00 strictly after from', () => {
+  const s = { movieDay: 5, movieTime: '19:00' };
+  assert.equal(S.movieDueAt(s, at(2026, 8, 18, 12)), at(2026, 8, 21, 19)); // Tue -> Fri
+  assert.equal(S.movieDueAt(s, at(2026, 8, 21, 19)), at(2026, 8, 28, 19)); // exactly due -> next week
+  assert.equal(S.movieDueAt(s, at(2026, 8, 21, 18)), at(2026, 8, 21, 19)); // same day earlier
+});
+
+test('chooseActivity avoids the two most recent, only enabled', () => {
+  const acts = [{ id: 'a', enabled: true }, { id: 'b', enabled: true }, { id: 'c', enabled: true }, { id: 'd', enabled: false }];
+  for (let i = 0; i < 20; i++) {
+    const a = S.chooseActivity(acts, ['a', 'b'], Math.random);
+    assert.equal(a.id, 'c');
+  }
+  assert.equal(S.chooseActivity([{ id: 'x', enabled: false }], [], Math.random), null);
+});
+
+function fresh(now) {
+  const st = defaultState();
+  st.movies.unseen = ['Her'];
+  S.tick(st, now, false, seq(0.5)); // plans the day, does not fire (absent)
+  return st;
+}
+
+test('tick plans today on first call and does not fire before a slot', () => {
+  const now = at(2026, 8, 18, 9, 0);
+  const st = fresh(now);
+  assert.equal(st.schedule.planDate, '2026-08-18');
+  assert.equal(st.schedule.slots.length, 3);
+  assert.equal(S.tick(st, now, true, seq(0.5)), null);
+});
+
+test('tick fires a nudge when a slot is due and she is present', () => {
+  const now = at(2026, 8, 18, 9);
+  const st = fresh(now);
+  const t = st.schedule.slots[0];
+  const fire = S.tick(st, t + 1000, true, seq(0.5));
+  assert.equal(fire.kind, 'nudge');
+  assert.ok(st.activities.some((a) => a.id === fire.activityId));
+  assert.deepEqual(st.schedule.fired, [t]);
+  assert.deepEqual(st.schedule.recent.slice(-1), [fire.activityId]);
+});
+
+test('tick holds a due slot while absent, then fires on return inside hours', () => {
+  const now = at(2026, 8, 18, 9);
+  const st = fresh(now);
+  const t = st.schedule.slots[0];
+  assert.equal(S.tick(st, t + 1000, false, seq(0.5)), null);
+  assert.deepEqual(st.schedule.fired, []);
+  const fire = S.tick(st, t + 20 * MIN, true, seq(0.5));
+  assert.equal(fire.kind, 'nudge');
+});
+
+test('tick collapses multiple pending slots into one fire', () => {
+  const now = at(2026, 8, 18, 9);
+  const st = fresh(now);
+  const last = st.schedule.slots[2];
+  const fire = S.tick(st, last + 1000, true, seq(0.5));
+  assert.equal(fire.kind, 'nudge');
+  assert.deepEqual(st.schedule.fired, st.schedule.slots);
+  assert.equal(S.tick(st, last + 2000, true, seq(0.5)), null);
+});
+
+test('tick drops slots once the active window has passed', () => {
+  const now = at(2026, 8, 18, 9);
+  const st = fresh(now);
+  assert.equal(S.tick(st, at(2026, 8, 18, 22, 30), true, seq(0.5)), null);
+  assert.deepEqual(st.schedule.fired, st.schedule.slots);
+});
+
+test('tick re-plans on a new day', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  const old = st.schedule.slots;
+  S.tick(st, at(2026, 8, 19, 8), false, seq(0.5));
+  assert.equal(st.schedule.planDate, '2026-08-19');
+  assert.notDeepEqual(st.schedule.slots, old);
+  assert.deepEqual(st.schedule.fired, []);
+});
+
+test('snooze fires the same activity after 60 min when present, and goes stale after 3 h', () => {
+  const now = at(2026, 8, 18, 12);
+  const st = fresh(now);
+  st.schedule.slots = []; // isolate from random slots
+  S.snooze(st, 'leetcode', now);
+  assert.equal(S.tick(st, now + 30 * MIN, true, seq(0.5)), null);
+  assert.deepEqual(S.tick(st, now + 61 * MIN, true, seq(0.5)), { kind: 'nudge', activityId: 'leetcode' });
+  assert.deepEqual(st.schedule.snoozed, []);
+  S.snooze(st, 'leetcode', now);
+  assert.equal(S.tick(st, now + 5 * H, true, seq(0.5)), null); // stale, dropped
+  assert.deepEqual(st.schedule.snoozed, []);
+});
+
+test('movie: due Friday 19:00, held while absent, fires on return, then next week', () => {
+  const st = fresh(at(2026, 8, 18, 9)); // Tue
+  assert.equal(st.schedule.movieNextAt, at(2026, 8, 21, 19));
+  assert.equal(S.tick(st, at(2026, 8, 21, 19, 1), false, seq(0.5)), null);
+  assert.equal(st.schedule.movieNextAt, at(2026, 8, 21, 19)); // still held
+  const f = S.tick(st, at(2026, 8, 21, 21), true, seq(0.5));
+  assert.deepEqual(f, { kind: 'movie' });
+  assert.equal(st.schedule.movieNextAt, at(2026, 8, 28, 19));
+});
+
+test('movie: dropped after 48 h of absence', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  assert.equal(S.tick(st, at(2026, 8, 23, 20), false, seq(0.5)), null); // Sun 20:00 > 48h
+  assert.equal(st.schedule.movieNextAt, at(2026, 8, 28, 19));
+});
+
+test('movie takes priority over a due nudge slot', () => {
+  const st = fresh(at(2026, 8, 21, 9)); // Fri
+  st.schedule.slots = [at(2026, 8, 21, 19)]; st.schedule.fired = [];
+  const f = S.tick(st, at(2026, 8, 21, 19, 1), true, seq(0.5));
+  assert.deepEqual(f, { kind: 'movie' });
+});
+
+test('markDone appends to history', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  S.markDone(st, 'cs50', at(2026, 8, 18, 10));
+  assert.deepEqual(st.history, [{ activityId: 'cs50', at: at(2026, 8, 18, 10), outcome: 'done' }]);
+});
+
+test('replanToday: fresh plan for today, past slots pre-consumed, no immediate fire', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.settings.nudgesPerDay = 6;
+  const now = at(2026, 8, 18, 15, 30);
+  S.replanToday(st, now, Math.random);
+  assert.equal(st.schedule.planDate, '2026-08-18');
+  assert.equal(st.schedule.slots.length, 6);
+  for (const t of st.schedule.slots) if (t <= now) assert.ok(st.schedule.fired.includes(t));
+  assert.equal(S.tick(st, now, true, seq(0.5)), null); // nothing pending right after a save
+  const future = st.schedule.slots.filter((t) => t > now);
+  if (future.length) assert.equal(S.tick(st, future[0] + 1000, true, seq(0.5)).kind, 'nudge');
+});
+
+// ---- quiet mode ----
+test('setQuiet: 2h / rest of today / off; isQuiet reflects it', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  const now = at(2026, 8, 18, 14, 10);
+  S.setQuiet(st, now, 'hours2');
+  assert.equal(st.schedule.quietUntil, now + 2 * H);
+  assert.equal(S.isQuiet(st, now), true);
+  assert.equal(S.isQuiet(st, now + 2 * H), false);
+  S.setQuiet(st, now, 'today');
+  assert.equal(st.schedule.quietUntil, at(2026, 8, 19, 0, 0));
+  assert.equal(S.isQuiet(st, at(2026, 8, 18, 23, 59)), true);
+  assert.equal(S.isQuiet(st, at(2026, 8, 19, 0, 0)), false);
+  S.setQuiet(st, now, 'off');
+  assert.equal(st.schedule.quietUntil, null);
+  assert.equal(S.isQuiet(st, now), false);
+});
+
+test('tick never fires while quiet, holds the slot, fires after quiet ends (inside hours)', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.schedule.slots = [at(2026, 8, 18, 12)]; st.schedule.fired = [];
+  S.setQuiet(st, at(2026, 8, 18, 11), 'hours2'); // until 13:00
+  assert.equal(S.tick(st, at(2026, 8, 18, 12, 1), true, seq(0.5)), null);
+  assert.deepEqual(st.schedule.fired, []);
+  assert.equal(S.tick(st, at(2026, 8, 18, 13, 1), true, seq(0.5)).kind, 'nudge');
+});
+
+test('tick: rest-of-today quiet drops today\'s slots at active end and clears itself tomorrow', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.schedule.slots = [at(2026, 8, 18, 15)]; st.schedule.fired = [];
+  S.setQuiet(st, at(2026, 8, 18, 14), 'today');
+  assert.equal(S.tick(st, at(2026, 8, 18, 22, 30), true, seq(0.5)), null);
+  assert.deepEqual(st.schedule.fired, [at(2026, 8, 18, 15)]);
+  S.tick(st, at(2026, 8, 19, 9, 5), true, seq(0.5));
+  assert.equal(st.schedule.quietUntil, null); // expired quiet is cleaned up
+});
+
+// ---- weekly recap ----
+test('recap: due Sunday 18:00, held while absent, fires when present, movie wins over recap', () => {
+  const st = fresh(at(2026, 8, 18, 9)); // Tue
+  assert.equal(st.schedule.recapNextAt, at(2026, 8, 23, 18)); // Sun
+  st.schedule.slots = []; st.schedule.fired = [];
+  st.schedule.movieNextAt = at(2026, 9, 25, 19); // keep Friday's (held) movie out of the way
+  assert.equal(S.tick(st, at(2026, 8, 23, 18, 1), false, seq(0.5)), null);
+  assert.deepEqual(S.tick(st, at(2026, 8, 23, 19), true, seq(0.5)), { kind: 'recap' });
+  assert.equal(st.schedule.recapNextAt, at(2026, 8, 30, 18));
+  // movie + recap due at once → movie first, recap on the next tick
+  st.settings.movieDay = 0; st.settings.movieTime = '18:00';
+  st.schedule.movieNextAt = at(2026, 8, 30, 18);
+  assert.deepEqual(S.tick(st, at(2026, 8, 30, 18, 1), true, seq(0.5)), { kind: 'movie' });
+  assert.deepEqual(S.tick(st, at(2026, 8, 30, 18, 2), true, seq(0.5)), { kind: 'recap' });
+});
+
+test('recap: disabled → never fires; dropped after 48 h', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.schedule.movieNextAt = at(2026, 9, 25, 19);
+  st.settings.activeStart = '20:00'; st.settings.activeEnd = '22:00'; // no nudge slot can be due at 19:00
+  st.settings.recapEnabled = false;
+  assert.equal(S.tick(st, at(2026, 8, 23, 19), true, seq(0.5)), null);
+  st.settings.recapEnabled = true;
+  st.schedule.recapNextAt = at(2026, 8, 23, 18);
+  S.tick(st, at(2026, 8, 25, 20), false, seq(0.5)); // Tue 20:00 > 48h
+  assert.equal(st.schedule.recapNextAt, at(2026, 8, 30, 18));
+});
+
+test('markOpened records an "opened" outcome; recapSummary counts the last 7 days and finds the best day', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  S.markDone(st, 'cs50', at(2026, 8, 18, 10));      // Tue
+  S.markDone(st, 'leetcode', at(2026, 8, 18, 15));  // Tue
+  S.markDone(st, 'usaco', at(2026, 8, 20, 11));     // Thu
+  S.markOpened(st, 'arxiv', at(2026, 8, 21, 12));   // Fri
+  S.markDone(st, 'old', at(2026, 8, 10, 12));       // > 7 days ago
+  assert.equal(st.history.find((h) => h.activityId === 'arxiv').outcome, 'opened');
+  const r = S.recapSummary(st.history, at(2026, 8, 23, 18));
+  assert.equal(r.done, 3); assert.equal(r.opened, 1); assert.equal(r.bestDay, 'Tuesday');
+  assert.equal(r.line, 'This week: 3 done · 1 opened · best day Tuesday.');
+  const empty = S.recapSummary([{ activityId: 'x', at: at(2026, 8, 1, 1) }], at(2026, 8, 23, 18));
+  assert.deepEqual([empty.done, empty.opened, empty.bestDay], [0, 0, null]);
+  assert.match(empty.line, /quiet week/i);
+});
+
+test('history entries without an outcome count as done (older versions)', () => {
+  const r = S.recapSummary([{ activityId: 'a', at: at(2026, 8, 22, 9) }], at(2026, 8, 23, 18));
+  assert.equal(r.done, 1);
+});
+
+// ---- pep talks ----
+test('planPep: pepPerWeek/7 chance per day; time inside active hours and ≥ 30 min from every nudge slot', () => {
+  const settings = { nudgesPerDay: 3, activeStart: '09:00', activeEnd: '22:00', pepPerWeek: 3 };
+  const day = at(2026, 8, 18);
+  const slots = S.planDay(settings, day, Math.random);
+  // first rng draw is the daily coin: 0.9 > 3/7 → no pep today
+  assert.equal(S.planPep(settings, day, slots, seq(0.9)), null);
+  let planned = 0;
+  for (let k = 0; k < 40; k++) {
+    const t = S.planPep(settings, day, slots, seq(0.1, Math.random(), Math.random(), Math.random(), Math.random(), Math.random()));
+    assert.ok(t !== null);
+    planned++;
+    assert.ok(t >= at(2026, 8, 18, 9) && t < at(2026, 8, 18, 22));
+    for (const s of slots) assert.ok(Math.abs(t - s) >= 30 * MIN, 'pep keeps its distance from nudges');
+  }
+  assert.equal(planned, 40);
+  assert.equal(S.planPep({ ...settings, pepPerWeek: 0 }, day, slots, seq(0.0)), null);
+  assert.notEqual(S.planPep({ ...settings, pepPerWeek: 7 }, day, slots, seq(0.999, 0.5)), null);
+});
+
+test('tick fires a pep once when due and present, holds while absent, drops after active end', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.settings.pepPerWeek = 7;
+  st.schedule.slots = []; st.schedule.fired = [];
+  st.schedule.pepAt = at(2026, 8, 18, 15); st.schedule.pepFired = false;
+  assert.equal(S.tick(st, at(2026, 8, 18, 15, 1), false, seq(0.5)), null);
+  assert.deepEqual(S.tick(st, at(2026, 8, 18, 15, 3), true, seq(0.5)), { kind: 'pep' });
+  assert.equal(st.schedule.pepFired, true);
+  assert.equal(S.tick(st, at(2026, 8, 18, 15, 4), true, seq(0.5)), null);
+  // held past active end → dropped, not fired tomorrow morning
+  st.schedule.pepAt = at(2026, 8, 18, 21, 50); st.schedule.pepFired = false;
+  assert.equal(S.tick(st, at(2026, 8, 18, 22, 5), true, seq(0.5)), null);
+  assert.equal(st.schedule.pepFired, true);
+});
+
+test('tick: a nudge slot pending at the same time wins and the pep is folded (no back-to-back visits)', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.schedule.slots = [at(2026, 8, 18, 12)]; st.schedule.fired = [];
+  st.schedule.pepAt = at(2026, 8, 18, 12, 0); st.schedule.pepFired = false;
+  assert.equal(S.tick(st, at(2026, 8, 18, 12, 1), true, seq(0.5)).kind, 'nudge');
+  assert.equal(st.schedule.pepFired, true);
+  assert.equal(S.tick(st, at(2026, 8, 18, 12, 2), true, seq(0.5)), null);
+});
+
+test('new day plans a pep; replanToday keeps a pep that already passed as consumed', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.settings.pepPerWeek = 7;
+  S.tick(st, at(2026, 8, 19, 8), false, seq(0.5));
+  assert.ok(st.schedule.pepAt >= at(2026, 8, 19, 9) && st.schedule.pepAt < at(2026, 8, 19, 22));
+  assert.equal(st.schedule.pepFired, false);
+  S.replanToday(st, at(2026, 8, 19, 21, 59), seq(0.5));
+  assert.equal(st.schedule.pepFired, st.schedule.pepAt <= at(2026, 8, 19, 21, 59));
+});
+
+// ---- gentle return ----
+test('needsGentleReturn: true after 5+ days without done/opened, false when recent or brand new', () => {
+  const now = at(2026, 8, 25, 12);
+  const st = fresh(at(2026, 8, 18, 9));
+  st.firstRunAt = at(2026, 8, 1, 9);
+  assert.equal(S.needsGentleReturn(st, now), true);            // long-time user, no history at all
+  S.markOpened(st, 'arxiv', at(2026, 8, 22, 12));               // 3 days ago
+  assert.equal(S.needsGentleReturn(st, now), false);
+  st.history = [{ activityId: 'cs50', at: at(2026, 8, 19, 12), outcome: 'done' }]; // 6 days ago
+  assert.equal(S.needsGentleReturn(st, now), true);
+  const brandNew = fresh(at(2026, 8, 24, 9)); brandNew.firstRunAt = at(2026, 8, 24, 9);
+  assert.equal(S.needsGentleReturn(brandNew, now), false);      // day-old install, nothing yet — not "away"
+});
+
+test('chooseEasyActivity prefers enabled easy ones, falls back to any enabled', () => {
+  const acts = [{ id: 'a', enabled: true }, { id: 'b', enabled: true, easy: true }, { id: 'c', enabled: false, easy: true }];
+  for (let i = 0; i < 10; i++) assert.equal(S.chooseEasyActivity(acts, [], Math.random).id, 'b');
+  assert.equal(S.chooseEasyActivity([{ id: 'a', enabled: true }], [], Math.random).id, 'a');
+  assert.equal(S.chooseEasyActivity([{ id: 'c', enabled: false, easy: true }], [], Math.random), null);
+});
+
+// ---- goodnight ----
+test('goodnight: off by default; when enabled fires once ~90 min after active end, also after midnight, never twice', () => {
+  const st = fresh(at(2026, 8, 18, 9));            // active 09:00–22:00
+  st.schedule.slots = []; st.schedule.fired = [];
+  st.schedule.movieNextAt = at(2026, 9, 25, 19); st.schedule.recapNextAt = at(2026, 9, 27, 18);
+  assert.equal(S.tick(st, at(2026, 8, 18, 23, 35), true, seq(0.5)), null); // disabled
+  st.settings.goodnightEnabled = true;
+  assert.equal(S.tick(st, at(2026, 8, 18, 23, 20), true, seq(0.5)), null); // too early (< end + 90 min)
+  assert.equal(S.tick(st, at(2026, 8, 18, 23, 35), false, seq(0.5)), null); // absent
+  assert.deepEqual(S.tick(st, at(2026, 8, 18, 23, 35), true, seq(0.5)), { kind: 'goodnight' });
+  assert.equal(S.tick(st, at(2026, 8, 18, 23, 50), true, seq(0.5)), null); // once per night
+  assert.equal(S.tick(st, at(2026, 8, 19, 1, 10), true, seq(0.5)), null);  // still the same night
+  // next evening, after midnight this time
+  assert.deepEqual(S.tick(st, at(2026, 8, 20, 0, 40), true, seq(0.5)), { kind: 'goodnight' });
+  // too late into the night (past end + 6 h) → skipped
+  assert.equal(S.tick(st, at(2026, 8, 21, 4, 30), true, seq(0.5)), null);
+});

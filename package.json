@@ -1,0 +1,39 @@
+{
+  "name": "juliet",
+  "productName": "Juliet",
+  "version": "1.0.0",
+  "description": "A pixel cat that reminds Areej to keep up her extracurriculars and picks movie night.",
+  "main": "src/main/main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test",
+    "icons": "node scripts/make-icons.js",
+    "dist": "npm run icons && electron-builder --mac --arm64"
+  },
+  "build": {
+    "appId": "com.mirza.juliet",
+    "productName": "Juliet",
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "assets/icon.png",
+      "identity": null,
+      "extendInfo": {
+        "LSUIElement": true
+      }
+    }
+  },
+  "devDependencies": {
+    "electron": "^43.4.0",
+    "electron-builder": "^26.15.3"
+  }
+}

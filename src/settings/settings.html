@@ -1,0 +1,97 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Juliet — Settings</title>
+<link rel="stylesheet" href="settings.css">
+</head>
+<body>
+<header>
+  <h1>Juliet</h1>
+  <p id="notice" hidden></p>
+  <nav>
+    <button data-tab="activities" class="on">Activities</button>
+    <button data-tab="movies">Movies</button>
+    <button data-tab="schedule">Schedule</button>
+    <button data-tab="rate">Rate</button>
+  </nav>
+</header>
+<main>
+  <section id="tab-activities">
+    <p class="hint">Juliet picks one of these at random. Tick = enabled. Clicking her opens the link.</p>
+    <table>
+      <thead><tr><th></th><th>Name</th><th>Link</th><th></th></tr></thead>
+      <tbody id="acts"></tbody>
+    </table>
+    <div class="row">
+      <button id="addAct">+ Add</button>
+      <button id="restore" class="ghost">Restore defaults</button>
+      <span class="spacer"></span>
+      <button id="saveActs" class="primary">Save</button>
+    </div>
+  </section>
+
+  <section id="tab-movies" hidden>
+    <p class="hint">Your watch-list — one title per line. Every week Juliet picks one you haven't seen and opens Google + Netflix search for it.</p>
+    <textarea id="movies" rows="12" placeholder="Paste your watch-list here, one per line"></textarea>
+    <div class="row">
+      <button id="saveMovies" class="primary">Save list</button>
+      <span class="spacer"></span>
+      <button id="testMovie" class="ghost">Pick a movie now</button>
+    </div>
+    <h3>Seen <small id="seenCount"></small></h3>
+    <ul id="seen"></ul>
+    <div class="row"><button id="clearSeen" class="ghost">Put all back</button></div>
+  </section>
+
+  <section id="tab-schedule" hidden>
+    <label>Nudges per day <input id="nudgesPerDay" type="number" min="1" max="8"></label>
+    <label>Pep talks per week <input id="pepPerWeek" type="number" min="0" max="7"> <span class="hint">(she just shows up to say you've got this)</span></label>
+    <label>Active hours <input id="activeStart" type="time"> to <input id="activeEnd" type="time"></label>
+    <label>Movie night
+      <select id="movieDay">
+        <option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option>
+        <option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option>
+        <option value="6">Saturday</option>
+      </select>
+      at <input id="movieTime" type="time">
+    </label>
+    <label><input id="recapEnabled" type="checkbox"> Weekly recap
+      <select id="recapDay">
+        <option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option>
+        <option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option>
+        <option value="6">Saturday</option>
+      </select>
+      at <input id="recapTime" type="time">
+    </label>
+    <label><input id="goodnightEnabled" type="checkbox"> Goodnight reminder — one soft "it's late" if I'm still here ~90 min after active hours end</label>
+    <label><input id="launchAtLogin" type="checkbox"> Launch Juliet at login</label>
+    <p class="hint">Juliet only shows up while you're actually at the Mac (awake, unlocked, recently active). Missed slots are dropped, not stacked. Need a break? Menu-bar cat → Quiet… (2 hours or the rest of today).</p>
+    <p id="stats" class="hint"></p>
+    <div class="row">
+      <button id="testNudge" class="ghost">Send Juliet now</button>
+      <span class="spacer"></span>
+      <button id="saveSchedule" class="primary">Save</button>
+    </div>
+  </section>
+  <section id="tab-rate" hidden>
+    <p class="hint">How's Juliet doing? Slide, then send. Juliet will react. "Copy for Mirza" puts a one-liner on your clipboard.</p>
+    <div id="rateBox">
+      <div id="rateValue">7</div>
+      <div id="rateLabel"></div>
+      <input id="rateSlider" type="range" min="1" max="10" step="1" value="7">
+      <div class="scale"><span>1</span><span>10</span></div>
+    </div>
+    <div class="row">
+      <button id="sendRating" class="primary">Send rating</button>
+      <button id="copyRating" class="ghost" disabled>Copy for Mirza</button>
+      <span class="spacer"></span>
+      <span id="rateStatus" class="hint"></span>
+    </div>
+    <h3>Past ratings <small id="rateCount"></small></h3>
+    <ul id="rateHistory"></ul>
+  </section>
+</main>
+<script src="settings.js"></script>
+</body>
+</html>
