@@ -94,7 +94,7 @@ function refreshTrayMenu() {
     { label: 'Send Juliet now', click: () => fireNudge() },
     { label: 'Pick a movie now', click: () => fireMovie() },
     { label: 'Pep talk now', click: () => firePep() },
-    { label: 'Hype me up', click: () => firePep(true) },
+    { label: 'Ego raiser', click: () => firePep(true) },
     { label: 'Rate Juliet…', click: () => openSettings('rate') },
     {
       label: quietLabel,
