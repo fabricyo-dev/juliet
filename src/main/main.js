@@ -32,6 +32,7 @@ if (!app.requestSingleInstanceLock()) app.quit();
 app.whenReady().then(() => {
   if (app.dock) app.dock.hide();
   store = createStore(path.join(app.getPath('userData'), 'state.json'), defaultState);
+  store.state.activities = migrateActivities(store.state.activities, DEFAULT_ACTIVITIES);
   presence = createPresence(powerMonitor, store.state.settings.presenceIdleSeconds);
   applyLoginItem();
   makeTray();
@@ -88,7 +89,7 @@ function refreshTrayMenu() {
       ],
     },
     { type: 'separator' },
-    { label: 'Settings…', click: openSettings },
+    { label: 'Settings…', click: () => openSettings() },
     {
       label: 'Launch at login', type: 'checkbox', checked: !!store.state.settings.launchAtLogin,
       click: (item) => { store.state.settings.launchAtLogin = item.checked; store.save(); applyLoginItem(); },
@@ -122,7 +123,7 @@ function tick() {
     else if (fire.kind === 'recap') fireRecap();
     else if (fire.kind === 'pep') firePep();
     else if (fire.kind === 'goodnight') fireGoodnight();
-    else fireNudge(fire.activityId);
+    else fireNudge(fire.activityId, false, fire.from);
   } catch (e) {
     console.error('tick failed', e);
   }
@@ -171,12 +172,15 @@ function dismissOverlay() {
   clearTimeout(overlayWatchdog);
   if (overlay) { try { overlay.destroy(); } catch { /* ignore */ } }
   overlay = null; current = null;
+  if (pendingRating !== null) { const n = pendingRating; pendingRating = null; setTimeout(() => fireRating(n), 1200); }
 }
 
-function fireNudge(activityId, forceGentle = false) {
+function fireNudge(activityId, forceGentle = false, from = 'manual') {
   if (overlay) return;
   const gentle = forceGentle || S.needsGentleReturn(store.state, Date.now());
-  const a = activityId
+  // A snoozed activity is one she explicitly deferred — keep it. A slot-picked one can be swapped for an easy one.
+  const useId = activityId && !(gentle && from === 'slot');
+  const a = useId
     ? store.state.activities.find((x) => x.id === activityId)
     : gentle
       ? S.chooseEasyActivity(store.state.activities, store.state.schedule.recent)
@@ -337,6 +341,7 @@ ipcMain.on('overlay:action', async (_e, id) => {
 
 // ---------- settings ----------
 function openSettings(tab) {
+  if (typeof tab !== 'string') tab = undefined;
   if (settingsWin) {
     settingsWin.show(); settingsWin.focus();
     if (tab) settingsWin.webContents.send('settings:tab', tab);
@@ -351,31 +356,32 @@ function openSettings(tab) {
   settingsWin.on('closed', () => { settingsWin = null; if (app.dock) app.dock.hide(); });
 }
 
-// "leetcode.com" → "https://leetcode.com"; anything with a scheme is left alone.
-function normalizeUrl(u) {
-  return /^[a-z][a-z0-9+.-]*:/i.test(u) ? u : `https://${u}`;
-}
+const { normalizeUrl, mergeActivities, migrateActivities } = require('./activities');
 
 function publicState() {
   return { ...store.state, recovered: store.recovered, placeholders: PLACEHOLDER_MOVIES, ratingLabels: R.RATING_LABELS };
 }
 ipcMain.handle('settings:get', () => publicState());
+let pendingRating = null; // a rating sent while Juliet was already on screen — she reacts once she's free
+function fireRating(n) {
+  if (overlay) { pendingRating = n; return false; }
+  current = { kind: 'rating' };
+  sendShow({
+    kind: 'rating',
+    title: `${n}/10 — ${R.ratingLabel(n)}`,
+    line: R.ratingReaction(n),
+    buttons: [{ id: 'ack', label: n >= 9 ? 'You earned it' : 'OK' }],
+  });
+  return true;
+}
 ipcMain.handle('settings:rate', (_e, value) => {
   const n = R.clampRating(value);
   if (n === null) return publicState();
   const now = Date.now();
   store.state.ratings = [...(store.state.ratings || []), { value: n, at: now }].slice(-200);
   store.save();
-  if (!overlay) {
-    current = { kind: 'rating' };
-    sendShow({
-      kind: 'rating',
-      title: `${n}/10 — ${R.ratingLabel(n)}`,
-      line: R.ratingReaction(n),
-      buttons: [{ id: 'ack', label: n >= 9 ? 'You earned it' : 'OK' }],
-    });
-  }
-  return { ...publicState(), summary: R.ratingSummary(n, now) };
+  const reacted = fireRating(n);
+  return { ...publicState(), summary: R.ratingSummary(n, now), reacted };
 });
 ipcMain.handle('settings:save', (_e, patch) => {
   const st = store.state;
@@ -393,7 +399,8 @@ ipcMain.handle('settings:save', (_e, patch) => {
     s.goodnightEnabled = !!s.goodnightEnabled;
     s.recapDay = Math.max(0, Math.min(6, parseInt(s.recapDay, 10) || 0));
     if (!/^\d{2}:\d{2}$/.test(s.recapTime)) s.recapTime = st.settings.recapTime;
-    const recapChanged = s.recapDay !== st.settings.recapDay || s.recapTime !== st.settings.recapTime;
+    const recapChanged = s.recapDay !== st.settings.recapDay || s.recapTime !== st.settings.recapTime
+      || (s.recapEnabled && !st.settings.recapEnabled);
     const planChanged = s.nudgesPerDay !== st.settings.nudgesPerDay || s.activeStart !== st.settings.activeStart
       || s.activeEnd !== st.settings.activeEnd || s.pepPerWeek !== st.settings.pepPerWeek;
     const movieChanged = s.movieDay !== st.settings.movieDay || s.movieTime !== st.settings.movieTime;
@@ -404,16 +411,7 @@ ipcMain.handle('settings:save', (_e, patch) => {
     applyLoginItem();
     refreshTrayMenu();
   }
-  if (Array.isArray(patch.activities)) {
-    st.activities = patch.activities
-      .filter((a) => a && String(a.name || '').trim() && String(a.url || '').trim())
-      .map((a, i) => ({
-        id: a.id || `custom-${Date.now()}-${i}`,
-        name: String(a.name).trim(),
-        url: normalizeUrl(String(a.url).trim()),
-        enabled: a.enabled !== false,
-      }));
-  }
+  if (Array.isArray(patch.activities)) st.activities = mergeActivities(st.activities, patch.activities, Date.now());
   if (typeof patch.moviesText === 'string') {
     const unseen = L.cleanMovieList(patch.moviesText, PLACEHOLDER_MOVIES);
     const lower = new Set(unseen.map((t) => t.toLowerCase()));

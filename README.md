@@ -25,7 +25,7 @@ Produces `dist/Juliet-1.0.0-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Si
 ## Where things live
 
 - State: `~/Library/Application Support/Juliet/state.json` (activities, watch-list, schedule, history). Delete it to reset.
-- Settings: click the menu-bar cat → **Settings…** (Activities / Movies / Schedule, plus "Send Juliet now" and "Pick a movie now").
+- Settings: click the menu-bar cat → **Settings…** (Activities / Movies / Schedule / Rate, plus "Send Juliet now" and "Pick a movie now").
 
 ## Rules of the cat
 
@@ -49,7 +49,7 @@ Every appearance follows `juliet-animations.json`:
 1. `walkRight` loops (8 frames × 100 ms, 120 px/s) from off the left edge to 20–40 % across the screen — she always finishes the current step before stopping.
 2. `turnToUser` (turn-talk frames 1–4).
 3. `talkToUser` loops (frames 5–8); the `speechStart` event on frame 5 reveals the code-rendered speech bubble. The text is whatever the app sends (nudge or movie); `"Hi!"` is only the manifest's preview default.
-4. On a button click / cat click / 90 s timeout: `turnBackRight` (frames 4→1), then `resumeWalkRight` walks her off the right edge.
+4. On a button click / 90 s timeout: `turnBackRight` (frames 4→1), then `resumeWalkRight` walks her off the right edge.
 
 "Did it" shows a one-line cheer in the bubble before she turns back (the sprite itself is never transformed). `src/shared/juliet-anim.js` mirrors the manifest; `test/anim.test.js` fails if the two ever drift, and decodes the sheets to check dimensions and that every frame's feet land on the anchor row.
 

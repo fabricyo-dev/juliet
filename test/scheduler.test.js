@@ -109,7 +109,7 @@ test('snooze fires the same activity after 60 min when present, and goes stale a
   st.schedule.slots = []; // isolate from random slots
   S.snooze(st, 'leetcode', now);
   assert.equal(S.tick(st, now + 30 * MIN, true, seq(0.5)), null);
-  assert.deepEqual(S.tick(st, now + 61 * MIN, true, seq(0.5)), { kind: 'nudge', activityId: 'leetcode' });
+  assert.deepEqual(S.tick(st, now + 61 * MIN, true, seq(0.5)), { kind: 'nudge', activityId: 'leetcode', from: 'snooze' });
   assert.deepEqual(st.schedule.snoozed, []);
   S.snooze(st, 'leetcode', now);
   assert.equal(S.tick(st, now + 5 * H, true, seq(0.5)), null); // stale, dropped
@@ -334,4 +334,37 @@ test('goodnight: off by default; when enabled fires once ~90 min after active en
   assert.deepEqual(S.tick(st, at(2026, 8, 20, 0, 40), true, seq(0.5)), { kind: 'goodnight' });
   // too late into the night (past end + 6 h) → skipped
   assert.equal(S.tick(st, at(2026, 8, 21, 4, 30), true, seq(0.5)), null);
+});
+
+// ---- review fixes ----
+test('tick tags where a nudge came from (slot vs snooze)', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.schedule.slots = [at(2026, 8, 18, 12)]; st.schedule.fired = [];
+  assert.equal(S.tick(st, at(2026, 8, 18, 12, 1), true, seq(0.5)).from, 'slot');
+});
+
+test('replanToday keeps a pep already delivered today, but re-rolls on a new day', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.settings.pepPerWeek = 7;
+  st.schedule.pepAt = at(2026, 8, 18, 10); st.schedule.pepFired = true; // delivered this morning
+  S.replanToday(st, at(2026, 8, 18, 14), seq(0.5));
+  assert.equal(st.schedule.pepFired, true);
+  st.schedule.slots = []; st.schedule.fired = [];
+  for (let h = 14; h < 22; h++) assert.notEqual((S.tick(st, at(2026, 8, 18, h, 30), true, seq(0.5)) || {}).kind, 'pep');
+  // stale planDate from yesterday + Settings save before the first tick → today still gets its pep
+  st.schedule.planDate = '2026-08-18'; st.schedule.pepFired = true;
+  S.replanToday(st, at(2026, 8, 19, 9, 5), seq(0.5));
+  assert.equal(st.schedule.pepFired, false);
+  assert.ok(st.schedule.pepAt >= at(2026, 8, 19, 9));
+});
+
+test('recap switched off never accumulates a stale due time; switching on does not fire immediately', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.settings.recapEnabled = false;
+  st.schedule.movieNextAt = at(2026, 9, 25, 19);
+  st.schedule.slots = []; st.schedule.fired = [];
+  S.tick(st, at(2026, 8, 24, 9, 5), true, seq(0.5)); // Monday, the Sunday recap passed while off
+  assert.equal(st.schedule.recapNextAt, at(2026, 8, 30, 18)); // rolled forward, not stale
+  st.settings.recapEnabled = true;
+  assert.equal(S.tick(st, at(2026, 8, 24, 9, 6), true, seq(0.5)), null);
 });

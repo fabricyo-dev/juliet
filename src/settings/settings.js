@@ -29,12 +29,12 @@
       return li;
     }));
   }
-  $('rateSlider').oninput = renderRate;
+  $('rateSlider').oninput = () => { renderRate(); $('rateStatus').textContent = ''; };
   $('sendRating').onclick = async () => {
     const res = await window.juliet.rate($('rateSlider').value);
     lastSummary = res.summary || '';
     state = res; renderRateHistory();
-    $('rateStatus').textContent = 'Sent. Juliet is on her way.';
+    $('rateStatus').textContent = res.reacted ? 'Sent. Juliet is on her way.' : 'Saved. Juliet is busy right now; she will react as soon as she is free.';
     $('copyRating').disabled = !lastSummary;
   };
   $('copyRating').onclick = async () => {

@@ -142,6 +142,8 @@ function tick(state, now, present, rng = Math.random) {
   if (now - sch.movieNextAt > MOVIE_HOLD_MS) sch.movieNextAt = movieDueAt(settings, now);
   if (!sch.recapNextAt) sch.recapNextAt = recapDueAt(settings, now);
   if (now - sch.recapNextAt > MOVIE_HOLD_MS) sch.recapNextAt = recapDueAt(settings, now);
+  // while the recap is switched off, keep the due time in the future so re-enabling never fires a stale one
+  if (!settings.recapEnabled && now >= sch.recapNextAt) sch.recapNextAt = recapDueAt(settings, now);
   if (sch.quietUntil && now >= sch.quietUntil) sch.quietUntil = null; // quiet period over
 
   // 3. drop expired slots once the active window has passed
@@ -173,7 +175,7 @@ function tick(state, now, present, rng = Math.random) {
   if (dueSnooze) {
     sch.snoozed = sch.snoozed.filter((s) => s !== dueSnooze);
     noteShown(sch, dueSnooze.activityId);
-    return { kind: 'nudge', activityId: dueSnooze.activityId };
+    return { kind: 'nudge', activityId: dueSnooze.activityId, from: 'snooze' };
   }
   // 7. slots (collapse all pending into one fire)
   if (now >= start && now < end) {
@@ -184,7 +186,7 @@ function tick(state, now, present, rng = Math.random) {
       const a = chooseActivity(state.activities, sch.recent, rng);
       if (!a) return null;
       noteShown(sch, a.id);
-      return { kind: 'nudge', activityId: a.id };
+      return { kind: 'nudge', activityId: a.id, from: 'slot' };
     }
     // 8. unprompted pep talk
     if (pepPending && (settings.pepPerWeek | 0) > 0) {
@@ -199,11 +201,15 @@ function tick(state, now, present, rng = Math.random) {
 // consumed, so the new plan only governs the rest of the day (no burst of catch-up nudges).
 function replanToday(state, now, rng = Math.random) {
   const sch = state.schedule;
+  const sameDay = sch.planDate === dayKey(now);
   sch.planDate = dayKey(now);
   sch.slots = planDay(state.settings, now, rng);
   sch.fired = sch.slots.filter((t) => t <= now);
-  sch.pepAt = planPep(state.settings, now, sch.slots, rng);
-  sch.pepFired = !!sch.pepAt && sch.pepAt <= now;
+  // the pep is a once-per-day coin: a pep already delivered today stays delivered
+  if (!sameDay || !sch.pepFired) {
+    sch.pepAt = planPep(state.settings, now, sch.slots, rng);
+    sch.pepFired = !!sch.pepAt && sch.pepAt <= now;
+  }
 }
 
 function snooze(state, activityId, now) {
