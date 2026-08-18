@@ -1,0 +1,47 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0; font: 13px/1.4 -apple-system, "SF Pro Text", Helvetica, sans-serif;
+  color: #2b2b33; background: #fffaf3; -webkit-user-select: none; user-select: none;
+}
+header { padding: 14px 18px 0; border-bottom: 2px solid #2b2b33; }
+h1 { margin: 0 0 6px; font-size: 18px; letter-spacing: .02em; }
+h3 { margin: 18px 0 6px; font-size: 13px; }
+h3 small { color: #5a5a66; font-weight: 400; }
+nav { display: flex; gap: 4px; }
+nav button {
+  font: inherit; padding: 6px 12px; border: 2px solid #2b2b33; border-bottom: none;
+  background: #f2ebe0; border-radius: 6px 6px 0 0; cursor: pointer; box-shadow: none;
+}
+nav button.on { background: #fff; font-weight: 700; }
+main { padding: 16px 18px 24px; }
+.hint { color: #5a5a66; margin: 0 0 10px; }
+table { width: 100%; border-collapse: collapse; }
+td, th { padding: 4px 6px; text-align: left; border-bottom: 1px solid #e6dfd3; font-size: 12px; }
+th:nth-child(1), td:nth-child(1) { width: 28px; }
+th:nth-child(4), td:nth-child(4) { width: 34px; }
+td input[type=text] {
+  width: 100%; font: inherit; font-size: 12px; padding: 3px 5px; border: 1px solid #cfc7ba;
+  border-radius: 4px; background: #fff; -webkit-user-select: text; user-select: text;
+}
+textarea {
+  width: 100%; font: 13px/1.4 -apple-system, "SF Pro Text", Helvetica, sans-serif; padding: 8px;
+  border: 2px solid #2b2b33; border-radius: 6px; resize: vertical; background: #fff;
+  -webkit-user-select: text; user-select: text;
+}
+label { display: block; margin: 10px 0; }
+input[type=number], input[type=time], select { font: inherit; padding: 3px 5px; }
+input[type=number] { width: 60px; }
+.row { display: flex; gap: 8px; margin-top: 12px; align-items: center; }
+.spacer { flex: 1; }
+button {
+  font: inherit; padding: 6px 12px; border: 2px solid #2b2b33; border-radius: 6px;
+  background: #fff; color: #2b2b33; cursor: pointer; box-shadow: 2px 2px 0 #2b2b33;
+}
+button.primary { background: #f29bb0; }
+button.ghost { box-shadow: none; background: transparent; }
+button:active { transform: translate(2px, 2px); box-shadow: none; }
+button.x { padding: 1px 7px; box-shadow: none; line-height: 1.2; }
+#notice { background: #ffe9a8; border: 2px solid #2b2b33; padding: 6px 8px; border-radius: 6px; margin: 0 0 8px; }
+ul#seen { padding-left: 18px; margin: 0; }
+ul#seen li { margin: 2px 0; }
+ul#seen button { margin-left: 8px; font-size: 11px; padding: 1px 6px; box-shadow: none; }
