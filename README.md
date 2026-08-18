@@ -18,7 +18,7 @@ Dev shortcuts: `JULIET_DEMO=nudge|gentle|movie|recap|pep|checkin|morning|stroll|
 npm run dist
 ```
 
-Produces `dist/Juliet-1.1.5-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Silicon). The app is **unsigned** (no Apple developer account).
+Produces `dist/Juliet-1.1.6-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Silicon). The app is **unsigned** (no Apple developer account).
 
 **First open on Areej's Mac:** open the `.dmg`, drag Juliet to Applications, then **right-click → Open → Open**. If macOS still refuses: System Settings → Privacy & Security → scroll down → **Open Anyway**. After that she launches at login on her own — look for the little cat in the menu bar.
 
@@ -34,7 +34,7 @@ Produces `dist/Juliet-1.1.5-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Si
 - Movie night: default Friday 19:00. **Open** = Google + Netflix search tabs. **Different one** = re-roll. **Skip this week** = puts the title back, week consumed. When every movie is seen the list resets.
 - **Quiet…** (menu-bar cat): *For 2 hours* or *Rest of today*. Nothing fires while quiet; a slot that came due is held and fires once quiet ends (if still inside active hours) — never stacked. *Resume now* ends it early. "Send Juliet now" / "Pick a movie now" still work while quiet (you asked).
 - **Weekly recap** (default Sunday 18:00, editable / switchable in Settings → Schedule): "This week: 4 done · 2 opened · best day Tuesday." Counts **Did it** and **Open** clicks from the last 7 days. An empty week gets a gentle "Quiet week — no worries" and an *Open one now* button.
-- **Pep talks** (default 3/week, 0–7 in Settings → Schedule, or menu-bar "Pep talk now"): she shows up with no task, just "Stop overthinking — you've got this. You are the smartest, most talented, well-spoken person I know." Lines live in `src/main/defaults.js` (`PEP_LINES`; the first `PEP_MIRZA_COUNT` are Mirza's own and she leans on those). **A word from Mirza** (Settings header / menu-bar) makes her say one of his lines only. Never lands within 30 min of a nudge; same presence/quiet rules.
+- **Pep talks** (default 3/week, 0–7 in Settings → Schedule, or menu-bar "Pep talk now"): she shows up with no task, just "Stop overthinking — you've got this. You are the smartest, most talented, well-spoken person I know." Lines live in `src/main/defaults.js` (`PEP_LINES`; the first `PEP_MIRZA_COUNT` are Mirza's own and she leans on those). **Hype me up** (Settings header / menu-bar) makes her say one of his lines only. Never lands within 30 min of a nudge; same presence/quiet rules.
 - **First launch**: the first time she's at the Mac, Juliet introduces herself ("Hi Areej. I'm Juliet. Mirza built me for you…") with a button straight into Settings. Once only.
 - **Gentle return**: if nothing has been done or opened for 5+ days, the next nudge softens ("no pressure — want to start small?") and picks a quick activity (the ones flagged `easy` in defaults).
 - **Check-ins** (default 2/week): "How's today going, Areej?" — *Rough* → she says she'll leave you be and switches Quiet on for two hours; *Okay* / *Great* get a line back.

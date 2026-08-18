@@ -94,7 +94,7 @@ function refreshTrayMenu() {
     { label: 'Send Juliet now', click: () => fireNudge() },
     { label: 'Pick a movie now', click: () => fireMovie() },
     { label: 'Pep talk now', click: () => firePep() },
-    { label: 'A word from Mirza', click: () => firePep(true) },
+    { label: 'Hype me up', click: () => firePep(true) },
     { label: 'Rate Juliet…', click: () => openSettings('rate') },
     {
       label: quietLabel,
@@ -325,7 +325,7 @@ function firePep(onlyMirza = false) {
   current = { kind: 'pep' };
   sendShow({
     kind: 'pep',
-    title: onlyMirza ? 'A word from Mirza.' : 'Hey Areej.',
+    title: 'Hey Areej.',
     line: pickPepLine(onlyMirza),
     buttons: [{ id: 'ack', label: 'Thanks, Juliet' }],
   });
