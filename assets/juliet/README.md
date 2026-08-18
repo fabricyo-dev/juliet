@@ -2,6 +2,8 @@
 
 This package combines Juliet's corrected right-facing walk with a new stop, turn-to-user, talk, turn-back, and resume sequence.
 
+This v6 revision uses clean gold-and-dark eyes with no white catchlights, pale lower-eye pixels, or tear-like reflections. The cheerful smile and compact speaking mouths are preserved.
+
 ## Animation states
 
 - `walkRight`: eight-frame forward walk loop

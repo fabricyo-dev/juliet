@@ -35,7 +35,7 @@ Produces `dist/Juliet-1.0.0-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Si
 
 ## Art & animation
 
-`assets/juliet/` is the designer's **`juliet-sprite-v5-interaction-handoff`** pack, vendored verbatim (its own README describes the files). Two 512×256 RGBA sheets, 4×2 cells of **128×128**, anchor **(64, 120)**, rendered 1:1 with nearest-neighbour scaling (`image-rendering: pixelated`).
+`assets/juliet/` is the designer's **`juliet-sprite-v6-clean-eyes-handoff` (v6: clean gold-and-dark eyes)** pack, vendored verbatim (its own README describes the files). Two 512×256 RGBA sheets, 4×2 cells of **128×128**, anchor **(64, 120)**, rendered 1:1 with nearest-neighbour scaling (`image-rendering: pixelated`).
 
 Every appearance follows `juliet-animations.json`:
 
