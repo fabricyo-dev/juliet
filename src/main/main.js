@@ -6,7 +6,7 @@ const {
 const S = require('./scheduler');
 const L = require('./links');
 const { createStore } = require('./store');
-const { defaultState, PLACEHOLDER_MOVIES, PEP_LINES, DEFAULT_ACTIVITIES } = require('./defaults');
+const { defaultState, PLACEHOLDER_MOVIES, PEP_LINES, MORNING_LINES, DEFAULT_ACTIVITIES } = require('./defaults');
 const { createPresence } = require('./presence');
 const R = require('./rating');
 const PH = require('./phone');
@@ -59,6 +59,10 @@ app.whenReady().then(() => {
   if (demo === 'goodnight') setTimeout(() => fireGoodnight(), 1500);
   if (demo === 'gentle') setTimeout(() => fireNudge(undefined, true), 1500);
   if (demo === 'phone') setTimeout(() => pushToPhone({ kind: 'nudge', via: 'phone' }), 1500);
+  if (demo === 'checkin') setTimeout(() => fireCheckin(), 1500);
+  if (demo === 'morning') setTimeout(() => fireMorning(), 1500);
+  if (demo === 'stroll') setTimeout(() => fireStroll(), 1500);
+  if (demo === 'followup') setTimeout(() => fireFollowup('Her'), 1500);
   if (demo === 'settings') setTimeout(openSettings, 500);
 });
 app.on('window-all-closed', () => { /* keep running in the menu bar */ });
@@ -138,6 +142,10 @@ function tick() {
     else if (fire.kind === 'recap') fireRecap();
     else if (fire.kind === 'pep') firePep();
     else if (fire.kind === 'goodnight') fireGoodnight();
+    else if (fire.kind === 'checkin') fireCheckin();
+    else if (fire.kind === 'morning') fireMorning();
+    else if (fire.kind === 'stroll') fireStroll();
+    else if (fire.kind === 'followup') fireFollowup(fire.title);
     else fireNudge(fire.activityId, false, fire.from);
   } catch (e) {
     console.error('tick failed', e);
@@ -180,8 +188,8 @@ function sendShow(payload) {
   if (w.webContents.isLoadingMainFrame()) w.webContents.once('did-finish-load', send);
   else send();
 }
-function leave(hop) {
-  if (overlay) overlay.webContents.send('overlay:leave', { hop: !!hop });
+function leave(hop, cheer) {
+  if (overlay) overlay.webContents.send('overlay:leave', { hop: !!hop, cheer: cheer || undefined });
 }
 function dismissOverlay() {
   clearTimeout(overlayWatchdog);
@@ -275,6 +283,41 @@ function fireGoodnight() {
     buttons: [{ id: 'ack', label: 'Goodnight, Juliet' }],
   });
 }
+function fireCheckin() {
+  if (overlay) return;
+  current = { kind: 'checkin' };
+  sendShow({
+    kind: 'checkin',
+    title: "How's today going, Areej?",
+    line: '',
+    buttons: [{ id: 'rough', label: 'Rough' }, { id: 'okay', label: 'Okay' }, { id: 'great', label: 'Great' }],
+  });
+}
+function fireMorning() {
+  if (overlay) return;
+  current = { kind: 'morning' };
+  sendShow({
+    kind: 'morning',
+    title: 'Morning, Areej.',
+    line: MORNING_LINES[Math.floor(Math.random() * MORNING_LINES.length)],
+    buttons: [{ id: 'ack', label: 'Morning, Juliet' }],
+  });
+}
+function fireStroll() {
+  if (overlay) return;
+  current = { kind: 'stroll' };
+  sendShow({ kind: 'stroll', silent: true });
+}
+function fireFollowup(title) {
+  if (overlay) return;
+  current = { kind: 'followup', movie: title };
+  sendShow({
+    kind: 'followup',
+    title: `How was ${title}?`,
+    line: '',
+    buttons: [{ id: 'loved', label: 'Loved it' }, { id: 'meh', label: 'Meh' }, { id: 'didnt', label: "Didn't watch" }],
+  });
+}
 function firePep() {
   if (overlay) return;
   current = { kind: 'pep' };
@@ -299,7 +342,7 @@ async function pushToPhone(fire) {
     const cleaned = { unseen: L.cleanMovieList(st.movies.unseen.join('\n'), PLACEHOLDER_MOVIES), seen: st.movies.seen };
     const r = L.pickMovie(cleaned);
     if (!r) return;
-    st.movies = r.movies; store.save();
+    st.movies = r.movies; S.noteMovieOpened(st, r.title, Date.now()); store.save();
     msg = PH.buildPhoneMessage({ kind: 'movie', title: r.title });
   } else if (fire.kind === 'pep') {
     msg = PH.buildPhoneMessage({ kind: 'pep', line: Math.random() < 0.5 ? PEP_LINES[0] : PEP_LINES[Math.floor(Math.random() * PEP_LINES.length)] });
@@ -361,20 +404,41 @@ ipcMain.on('overlay:action', async (_e, id) => {
         if (await openAll([a.url])) { S.markOpened(store.state, a.id, now); store.save(); leave(false); }
         else sendShow(couldNotOpenPayload('nudge', `Areej — ${a.name}`));
       } else if (id === 'later') { S.snooze(store.state, a.id, now); store.save(); leave(false); }
-      else if (id === 'done') { S.markDone(store.state, a.id, now); store.save(); leave(true); }
+      else if (id === 'done') {
+        S.markDone(store.state, a.id, now); store.save();
+        leave(true, S.milestoneFor(S.countDone(store.state.history)));
+      }
       else leave(false); // ack / timeout
     } else if (current.kind === 'movie') {
       const title = current.movie;
       if (id === 'open') {
-        if (await openAll(L.movieLinks(title))) leave(true);
+        if (await openAll(L.movieLinks(title))) { S.noteMovieOpened(store.state, title, now); store.save(); leave(true); }
         else sendShow(couldNotOpenPayload('movie', `Movie night, Areej: ${title}`));
       } else if (id === 'different') {
         const r = L.rerollMovie(store.state.movies, title);
         if (r) { store.state.movies = r.movies; store.save(); current.movie = r.title; sendShow(moviePayload(r.title)); }
         else leave(false);
       } else { // skip / ack / timeout: she didn't watch it — put it back
-        store.state.movies = L.unpickMovie(store.state.movies, title); store.save(); leave(false);
+        store.state.movies = L.unpickMovie(store.state.movies, title); S.clearMovieFollowup(store.state); store.save(); leave(false);
       }
+    } else if (current.kind === 'checkin') {
+      if (id === 'rough' || id === 'okay' || id === 'great') {
+        store.state.moods = [...(store.state.moods || []), { value: id, at: now }].slice(-500);
+        if (id === 'rough') {
+          S.setQuiet(store.state, now, 'hours2'); store.save(); refreshTrayMenu();
+          sendShow({ kind: 'checkin', title: "Then I'll leave you be for a bit.", line: `Back in a couple of hours (quiet until ${hhmm(store.state.schedule.quietUntil)}). Be kind to yourself.`, buttons: [{ id: 'ack', label: 'Thanks' }] });
+        } else if (id === 'okay') {
+          store.save();
+          sendShow({ kind: 'checkin', title: 'Okay is fine.', line: 'Steady wins. See you later.', buttons: [{ id: 'ack', label: 'See you' }] });
+        } else { store.save(); leave(true, 'Look at you. Keep it rolling.'); }
+      } else leave(false); // ack / timeout
+    } else if (current.kind === 'followup') {
+      const title = current.movie;
+      if (id === 'loved') { store.state.favourites = [...(store.state.favourites || []), { title, at: now }].slice(-500); store.save(); leave(true, 'Noted. Good taste.'); }
+      else if (id === 'didnt') { store.state.movies = L.unpickMovie(store.state.movies, title); store.save(); leave(false); }
+      else leave(false); // meh / timeout
+    } else if (current.kind === 'stroll' || current.kind === 'morning') {
+      leave(false);
     } else if (current.kind === 'pep' || current.kind === 'goodnight' || current.kind === 'rating') {
       leave(false); // any click (or the timeout) — she said her piece
     } else if (current.kind === 'welcome') {
@@ -453,6 +517,9 @@ ipcMain.handle('settings:save', (_e, patch) => {
     if (!/^\d{2}:\d{2}$/.test(s.activeEnd)) s.activeEnd = st.settings.activeEnd;
     if (!/^\d{2}:\d{2}$/.test(s.movieTime)) s.movieTime = st.settings.movieTime;
     s.pepPerWeek = Math.max(0, Math.min(7, parseInt(s.pepPerWeek, 10) || 0));
+    s.checkinPerWeek = Math.max(0, Math.min(7, parseInt(s.checkinPerWeek, 10) || 0));
+    s.strollPerWeek = Math.max(0, Math.min(7, parseInt(s.strollPerWeek, 10) || 0));
+    s.morningEnabled = !!s.morningEnabled;
     s.recapEnabled = !!s.recapEnabled;
     s.goodnightEnabled = !!s.goodnightEnabled;
     s.recapDay = Math.max(0, Math.min(6, parseInt(s.recapDay, 10) || 0));
@@ -460,7 +527,8 @@ ipcMain.handle('settings:save', (_e, patch) => {
     const recapChanged = s.recapDay !== st.settings.recapDay || s.recapTime !== st.settings.recapTime
       || (s.recapEnabled && !st.settings.recapEnabled);
     const planChanged = s.nudgesPerDay !== st.settings.nudgesPerDay || s.activeStart !== st.settings.activeStart
-      || s.activeEnd !== st.settings.activeEnd || s.pepPerWeek !== st.settings.pepPerWeek;
+      || s.activeEnd !== st.settings.activeEnd || s.pepPerWeek !== st.settings.pepPerWeek
+      || s.checkinPerWeek !== st.settings.checkinPerWeek || s.strollPerWeek !== st.settings.strollPerWeek;
     const movieChanged = s.movieDay !== st.settings.movieDay || s.movieTime !== st.settings.movieTime;
     st.settings = s;
     if (planChanged) S.replanToday(st, Date.now()); // new plan governs only the rest of today
@@ -484,6 +552,11 @@ ipcMain.handle('settings:testNudge', () => fireNudge()); // false = she's alread
 ipcMain.handle('settings:testMovie', () => { fireMovie(); return true; });
 ipcMain.handle('settings:restoreDefaults', () => {
   store.state.activities = DEFAULT_ACTIVITIES.map((a) => ({ ...a }));
+  store.save();
+  return publicState();
+});
+ipcMain.handle('settings:unfavourite', (_e, title) => {
+  store.state.favourites = (store.state.favourites || []).filter((f) => f.title !== title);
   store.save();
   return publicState();
 });

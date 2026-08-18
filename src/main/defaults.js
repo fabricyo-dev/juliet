@@ -29,6 +29,9 @@ const DEFAULT_SETTINGS = {
   recapDay: 0, // Sunday
   recapTime: '18:00',
   pepPerWeek: 3, // unprompted pep talks (0–7)
+  checkinPerWeek: 2, // "How's today going?" (0–7)
+  strollPerWeek: 2, // silent cameo walks, no bubble (0–7)
+  morningEnabled: true, // a hello the first time she's at the Mac each day
   goodnightEnabled: false, // one soft "it's late" ~90 min after active hours end
   phoneEnabled: false,     // ping her iPhone (via ntfy) when something is due while she's away from the Mac
   phoneTopic: null,        // generated the first time phone pings are switched on
@@ -42,6 +45,18 @@ const PEP_LINES = [
   "Stop overthinking — you've got this. You are the smartest, most talented, well-spoken person I know.",
   "You are the smartest, most talented, well-spoken person in any room. Stop overthinking and go.",
   "Quick reminder from your cat: you've got this. Smartest, most talented, best-spoken — that's you.",
+  "Overthinking is just talent with nowhere to go. Point it at one thing and start.",
+  "Whatever you're second-guessing: you already know. You always do.",
+  "You've talked your way through harder rooms than this one. Go be brilliant.",
+  "The version of you that's worried and the version that's brilliant are the same person. Send the brilliant one.",
+  "Deep breath. Smartest person you know is reading this.",
+];
+
+const MORNING_LINES = [
+  'Coffee first. Then one small thing.',
+  "New day. I'll come by later.",
+  'Sleep okay? Take it easy today.',
+  "Morning. No rush — I'm around.",
 ];
 
 const PLACEHOLDER_MOVIES = ['Paste your watch-list here, one per line', 'e.g. The Social Network'];
@@ -56,8 +71,10 @@ function defaultState() {
     movies: { unseen: [...PLACEHOLDER_MOVIES], seen: [] },
     history: [],
     ratings: [],       // {value 1–10, at}
-    schedule: { planDate: null, slots: [], fired: [], snoozed: [], recent: [], movieNextAt: null, recapNextAt: null, quietUntil: null, pepAt: null, pepFired: false, goodnightDate: null },
+    moods: [],         // {value 'rough'|'okay'|'great', at}
+    favourites: [],    // {title, at} — movies she loved
+    schedule: { planDate: null, slots: [], fired: [], snoozed: [], recent: [], movieNextAt: null, recapNextAt: null, quietUntil: null, pepAt: null, pepFired: false, checkinAt: null, checkinFired: false, strollAt: null, strollFired: false, morningDate: null, followup: null, goodnightDate: null },
   };
 }
 
-module.exports = { DEFAULT_ACTIVITIES, DEFAULT_SETTINGS, PLACEHOLDER_MOVIES, PEP_LINES, defaultState };
+module.exports = { DEFAULT_ACTIVITIES, DEFAULT_SETTINGS, PLACEHOLDER_MOVIES, PEP_LINES, MORNING_LINES, defaultState };

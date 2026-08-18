@@ -44,6 +44,7 @@ test('chooseActivity avoids the two most recent, only enabled', () => {
 function fresh(now) {
   const st = defaultState();
   st.movies.unseen = ['Her'];
+  st.settings.morningEnabled = false; // the good-morning cameo has its own test
   S.tick(st, now, false, seq(0.5)); // plans the day, does not fire (absent)
   return st;
 }
@@ -401,4 +402,102 @@ test('phone channel: movie and pep due while away go to the phone', () => {
   st.schedule.recapNextAt = at(2026, 9, 27, 18);
   st.schedule.slots = []; st.schedule.fired = []; // Friday's freshly planned slots would pre-empt the pep
   assert.deepEqual(S.tick(st, at(2026, 8, 21, 20, 1), false, seq(0.5), { phone: true }), { kind: 'pep', via: 'phone' });
+});
+
+// ---- cameos: check-in, stroll, good morning ----
+test('planCameo keeps its distance from every avoid time and honours the weekly coin', () => {
+  const settings = { activeStart: '09:00', activeEnd: '22:00' };
+  const day = at(2026, 8, 18);
+  const avoid = [at(2026, 8, 18, 12), at(2026, 8, 18, 16)];
+  assert.equal(S.planCameo(settings, day, avoid, 0, seq(0.0)), null);
+  assert.equal(S.planCameo(settings, day, avoid, 2, seq(0.9)), null); // coin fails (0.9 > 2/7)
+  for (let k = 0; k < 30; k++) {
+    const t = S.planCameo(settings, day, avoid, 7, seq(0.1, Math.random(), Math.random(), Math.random(), Math.random()));
+    assert.ok(t >= at(2026, 8, 18, 9) && t < at(2026, 8, 18, 22));
+    for (const a of avoid) assert.ok(Math.abs(t - a) >= 30 * MIN);
+  }
+});
+
+test('new day plans pep, checkin and stroll (each ≥30 min from the others when planned)', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.settings.pepPerWeek = 7; st.settings.checkinPerWeek = 7; st.settings.strollPerWeek = 7;
+  S.tick(st, at(2026, 8, 19, 8), false, seq(0.1, 0.3, 0.1, 0.6, 0.1, 0.9, 0.1, 0.4, 0.1, 0.5));
+  const { pepAt, checkinAt, strollAt } = st.schedule;
+  assert.ok(pepAt && checkinAt && strollAt);
+  const times = [pepAt, checkinAt, strollAt].sort((a, b) => a - b);
+  for (let i = 1; i < times.length; i++) assert.ok(times[i] - times[i - 1] >= 30 * MIN, 'cameos spaced');
+});
+
+test('checkin and stroll fire once when due and present (mac only), fold under a pending nudge', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.settings.checkinPerWeek = 7; st.settings.strollPerWeek = 7;
+  st.schedule.slots = []; st.schedule.fired = [];
+  st.schedule.checkinAt = at(2026, 8, 18, 14); st.schedule.checkinFired = false;
+  st.schedule.strollAt = at(2026, 8, 18, 16); st.schedule.strollFired = false;
+  assert.equal(S.tick(st, at(2026, 8, 18, 14, 1), false, seq(0.5), { phone: true }), null); // never to the phone
+  assert.deepEqual(S.tick(st, at(2026, 8, 18, 14, 2), true, seq(0.5)), { kind: 'checkin', via: 'mac' });
+  assert.equal(S.tick(st, at(2026, 8, 18, 14, 3), true, seq(0.5)), null);
+  assert.deepEqual(S.tick(st, at(2026, 8, 18, 16, 1), true, seq(0.5)), { kind: 'stroll', via: 'mac' });
+  // fold: a nudge slot and a stroll both pending → nudge only, stroll consumed
+  st.schedule.slots = [at(2026, 8, 18, 18)]; st.schedule.fired = [];
+  st.schedule.strollAt = at(2026, 8, 18, 18); st.schedule.strollFired = false;
+  assert.equal(S.tick(st, at(2026, 8, 18, 18, 1), true, seq(0.5)).kind, 'nudge');
+  assert.equal(st.schedule.strollFired, true);
+});
+
+test('good morning: once per day, first presence within 4 h of active start, skipped when a nudge is already due', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.settings.morningEnabled = true;
+  st.schedule.slots = [at(2026, 8, 18, 15)]; st.schedule.fired = [];
+  assert.equal(S.tick(st, at(2026, 8, 18, 8, 30), true, seq(0.5)), null);              // before active start
+  assert.deepEqual(S.tick(st, at(2026, 8, 18, 9, 10), true, seq(0.5)), { kind: 'morning', via: 'mac' });
+  assert.equal(S.tick(st, at(2026, 8, 18, 9, 11), true, seq(0.5)), null);              // once
+  // next day: she only shows up at 15:00 → too late for a morning
+  S.tick(st, at(2026, 8, 19, 15, 0), false, seq(0.5));
+  st.schedule.slots = []; st.schedule.fired = [];
+  assert.equal(S.tick(st, at(2026, 8, 19, 15, 1), true, seq(0.5)), null);
+  // day after: a nudge is due at the same moment → the nudge is the hello, morning consumed
+  S.tick(st, at(2026, 8, 20, 8, 0), false, seq(0.5));
+  st.schedule.slots = [at(2026, 8, 20, 9, 5)]; st.schedule.fired = [];
+  assert.equal(S.tick(st, at(2026, 8, 20, 9, 6), true, seq(0.5)).kind, 'nudge');
+  assert.equal(st.schedule.morningDate, '2026-08-20');
+  // disabled → never
+  st.settings.morningEnabled = false;
+  S.tick(st, at(2026, 8, 21, 8, 0), false, seq(0.5));
+  st.schedule.slots = []; st.schedule.fired = [];
+  assert.equal(S.tick(st, at(2026, 8, 21, 9, 6), true, seq(0.5)), null);
+});
+
+// ---- movie follow-up ----
+test('noteMovieOpened schedules a follow-up next day at noon; fires once when present; dropped after 48 h', () => {
+  const st = fresh(at(2026, 8, 21, 9));
+  st.schedule.slots = []; st.schedule.fired = [];
+  st.schedule.movieNextAt = at(2026, 9, 25, 19); st.schedule.recapNextAt = at(2026, 9, 27, 18);
+  S.noteMovieOpened(st, 'Her', at(2026, 8, 21, 20));
+  assert.deepEqual(st.schedule.followup, { title: 'Her', at: at(2026, 8, 22, 12) });
+  S.tick(st, at(2026, 8, 22, 10), false, seq(0.5)); st.schedule.slots = []; st.schedule.fired = []; // plan the day, keep nudges out of the way
+  assert.equal(S.tick(st, at(2026, 8, 22, 11), true, seq(0.5)), null);
+  assert.equal(S.tick(st, at(2026, 8, 22, 12, 1), false, seq(0.5), { phone: true }), null); // mac only
+  assert.deepEqual(S.tick(st, at(2026, 8, 22, 12, 2), true, seq(0.5)), { kind: 'followup', title: 'Her', via: 'mac' });
+  assert.equal(st.schedule.followup, null);
+  S.noteMovieOpened(st, 'Arrival', at(2026, 8, 22, 21));
+  S.tick(st, at(2026, 8, 25, 13), false, seq(0.5)); // > 48 h past due while away → dropped
+  assert.equal(st.schedule.followup, null);
+  S.noteMovieOpened(st, 'Her', at(2026, 8, 25, 20)); S.clearMovieFollowup(st);
+  assert.equal(st.schedule.followup, null);
+});
+
+// ---- milestones ----
+test('milestoneFor returns a line only at 10/25/50/100/250 done', () => {
+  assert.equal(S.milestoneFor(9), null);
+  assert.match(S.milestoneFor(10), /ten/i);
+  assert.match(S.milestoneFor(25), /twenty-five/i);
+  assert.match(S.milestoneFor(50), /fifty/i);
+  assert.match(S.milestoneFor(100), /hundred/i);
+  assert.match(S.milestoneFor(250), /two hundred and fifty/i);
+  assert.equal(S.milestoneFor(11), null);
+  for (const n of [10, 25, 50, 100, 250]) assert.doesNotMatch(S.milestoneFor(n), /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u);
+});
+test('countDone counts done outcomes (and legacy entries), not opened', () => {
+  assert.equal(S.countDone([{ outcome: 'done' }, { outcome: 'opened' }, {}]), 2);
 });

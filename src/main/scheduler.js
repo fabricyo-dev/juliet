@@ -43,20 +43,27 @@ function planDay(settings, ms, rng = Math.random) {
   return out.sort((a, b) => a - b);
 }
 
-// Unprompted pep talk: with probability pepPerWeek/7 pick one time today inside active hours,
-// ≥ 30 min away from every nudge slot when possible. Returns epoch ms or null.
-const PEP_GAP_MS = 30 * MIN;
-function planPep(settings, ms, slots, rng = Math.random) {
-  const perWeek = Math.max(0, Math.min(7, settings.pepPerWeek | 0));
-  if (perWeek === 0 || rng() >= perWeek / 7) return null;
+// Cameos (pep talk, check-in, silent stroll): with probability perWeek/7 pick one time today inside
+// active hours, ≥ 30 min away from every time in `avoid` when possible. Returns epoch ms or null.
+const CAMEO_GAP_MS = 30 * MIN;
+function planCameo(settings, ms, avoid, perWeek, rng = Math.random) {
+  const p = Math.max(0, Math.min(7, perWeek | 0));
+  if (p === 0 || rng() >= p / 7) return null;
   const { start, end } = activeWindow(settings, ms);
   let best = null;
   for (let i = 0; i < 20; i++) {
     const t = Math.floor((start + rng() * (end - start - MIN)) / MIN) * MIN;
     if (best === null) best = t;
-    if (slots.every((s) => Math.abs(t - s) >= PEP_GAP_MS)) return t;
+    if ((avoid || []).every((s) => s === null || s === undefined || Math.abs(t - s) >= CAMEO_GAP_MS)) return t;
   }
   return best;
+}
+function planPep(settings, ms, slots, rng = Math.random) { return planCameo(settings, ms, slots, settings.pepPerWeek, rng); }
+// Plan all three cameos for a day, each avoiding the slots and the ones planned before it.
+function planCameos(sch, settings, ms, rng) {
+  sch.pepAt = planCameo(settings, ms, sch.slots, settings.pepPerWeek, rng); sch.pepFired = false;
+  sch.checkinAt = planCameo(settings, ms, [...sch.slots, sch.pepAt], settings.checkinPerWeek, rng); sch.checkinFired = false;
+  sch.strollAt = planCameo(settings, ms, [...sch.slots, sch.pepAt, sch.checkinAt], settings.strollPerWeek, rng); sch.strollFired = false;
 }
 
 // Next occurrence of weekday `day` (0 = Sunday) at "HH:MM" strictly after fromMs.
@@ -137,8 +144,7 @@ function tick(state, now, present, rng = Math.random, opts = {}) {
     sch.planDate = today;
     sch.slots = planDay(settings, now, rng);
     sch.fired = [];
-    sch.pepAt = planPep(settings, now, sch.slots, rng);
-    sch.pepFired = false;
+    planCameos(sch, settings, now, rng);
   }
   // 2. weekly bookkeeping (48 h hold, then drop to next occurrence)
   if (!sch.movieNextAt) sch.movieNextAt = movieDueAt(settings, now);
@@ -148,6 +154,7 @@ function tick(state, now, present, rng = Math.random, opts = {}) {
   // while the recap is switched off, keep the due time in the future so re-enabling never fires a stale one
   if (!settings.recapEnabled && now >= sch.recapNextAt) sch.recapNextAt = recapDueAt(settings, now);
   if (sch.quietUntil && now >= sch.quietUntil) sch.quietUntil = null; // quiet period over
+  if (sch.followup && now - sch.followup.at > MOVIE_HOLD_MS) sch.followup = null; // asked too late — let it go
 
   // 3. drop expired slots once the active window has passed
   const { start, end } = activeWindow(settings, now);
@@ -155,8 +162,12 @@ function tick(state, now, present, rng = Math.random, opts = {}) {
   if (now >= end) {
     for (const t of sch.slots) if (t <= now && !firedSet.has(t)) { sch.fired.push(t); firedSet.add(t); }
     if (sch.pepAt && !sch.pepFired) sch.pepFired = true;
+    if (sch.checkinAt && !sch.checkinFired) sch.checkinFired = true;
+    if (sch.strollAt && !sch.strollFired) sch.strollFired = true;
   }
   const pepPending = !!sch.pepAt && !sch.pepFired && now >= sch.pepAt;
+  const checkinPending = !!sch.checkinAt && !sch.checkinFired && now >= sch.checkinAt;
+  const strollPending = !!sch.strollAt && !sch.strollFired && now >= sch.strollAt;
   // 4. drop stale snoozes
   sch.snoozed = (sch.snoozed || []).filter((s) => now - s.at <= SNOOZE_STALE_MS);
 
@@ -175,33 +186,74 @@ function tick(state, now, present, rng = Math.random, opts = {}) {
   if (present) {
     const gn = goodnightDue(state, now);
     if (gn) { sch.goodnightDate = gn; return { kind: 'goodnight', via }; }
+    // movie follow-up: the day after she opened one, from noon (buttons → Mac only)
+    if (sch.followup && now >= sch.followup.at) {
+      const title = sch.followup.title;
+      sch.followup = null;
+      return { kind: 'followup', title, via };
+    }
   }
-  // 6. snoozed
   const dueSnooze = sch.snoozed.find((s) => s.at <= now);
+  const pendingSlots = now >= start && now < end ? sch.slots.filter((t) => t <= now && !firedSet.has(t)) : [];
+  const nudgeDue = !!dueSnooze || pendingSlots.length > 0;
+  // 6. good morning — first presence of the day, within 4 h of active start; a due nudge is hello enough
+  if (present && settings.morningEnabled && sch.morningDate !== today && now >= start && now < start + 4 * 60 * MIN) {
+    sch.morningDate = today;
+    if (!nudgeDue) return { kind: 'morning', via };
+  }
+  // 7. snoozed
   if (dueSnooze) {
     sch.snoozed = sch.snoozed.filter((s) => s !== dueSnooze);
     noteShown(sch, dueSnooze.activityId);
     return { kind: 'nudge', activityId: dueSnooze.activityId, from: 'snooze', via };
   }
-  // 7. slots (collapse all pending into one fire)
+  // 8. slots (collapse all pending into one fire)
   if (now >= start && now < end) {
-    const pending = sch.slots.filter((t) => t <= now && !firedSet.has(t));
-    if (pending.length) {
-      sch.fired.push(...pending);
-      if (pepPending) sch.pepFired = true; // one visit at a time — fold the pep into this nudge
+    if (pendingSlots.length) {
+      sch.fired.push(...pendingSlots);
+      // one visit at a time — fold any cameo that is also due into this nudge
+      if (pepPending) sch.pepFired = true;
+      if (checkinPending) sch.checkinFired = true;
+      if (strollPending) sch.strollFired = true;
       const a = chooseActivity(state.activities, sch.recent, rng);
       if (!a) return null;
       noteShown(sch, a.id);
       return { kind: 'nudge', activityId: a.id, from: 'slot', via };
     }
-    // 8. unprompted pep talk
+    // 9. cameos: pep (mac or phone), then check-in and stroll (Mac only — they need her in front of the screen)
     if (pepPending && (settings.pepPerWeek | 0) > 0) {
       sch.pepFired = true;
       return { kind: 'pep', via };
     }
+    if (present && checkinPending && (settings.checkinPerWeek | 0) > 0) {
+      sch.checkinFired = true;
+      return { kind: 'checkin', via };
+    }
+    if (present && strollPending && (settings.strollPerWeek | 0) > 0) {
+      sch.strollFired = true;
+      return { kind: 'stroll', via };
+    }
   }
   return null;
 }
+
+// Movie follow-up: ask the next day from noon how it was.
+function noteMovieOpened(state, title, now) {
+  const d = new Date(now);
+  state.schedule.followup = { title, at: new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 12, 0).getTime() };
+}
+function clearMovieFollowup(state) { state.schedule.followup = null; }
+
+// Milestones: positive only, said instead of the usual cheer.
+const MILESTONES = {
+  10: "That's ten. You're doing the thing.",
+  25: 'Twenty-five. This is a habit now.',
+  50: 'Fifty. Quietly proud of you.',
+  100: 'One hundred. Ivy-level consistency.',
+  250: 'Two hundred and fifty. I ran out of words. Mirza too.',
+};
+function countDone(history) { return (history || []).filter((h) => !h.outcome || h.outcome === 'done').length; }
+function milestoneFor(doneCount) { return MILESTONES[doneCount] || null; }
 
 // Settings changed mid-day: draw a fresh plan for today but treat everything already in the past as
 // consumed, so the new plan only governs the rest of the day (no burst of catch-up nudges).
@@ -211,11 +263,13 @@ function replanToday(state, now, rng = Math.random) {
   sch.planDate = dayKey(now);
   sch.slots = planDay(state.settings, now, rng);
   sch.fired = sch.slots.filter((t) => t <= now);
-  // the pep is a once-per-day coin: a pep already delivered today stays delivered
-  if (!sameDay || !sch.pepFired) {
-    sch.pepAt = planPep(state.settings, now, sch.slots, rng);
-    sch.pepFired = !!sch.pepAt && sch.pepAt <= now;
-  }
+  // cameos are once-per-day coins: one already delivered today stays delivered
+  const keep = { pep: sameDay && sch.pepFired, checkin: sameDay && sch.checkinFired, stroll: sameDay && sch.strollFired };
+  const prev = { pepAt: sch.pepAt, checkinAt: sch.checkinAt, strollAt: sch.strollAt };
+  planCameos(sch, state.settings, now, rng);
+  if (keep.pep) { sch.pepAt = prev.pepAt; sch.pepFired = true; } else sch.pepFired = !!sch.pepAt && sch.pepAt <= now;
+  if (keep.checkin) { sch.checkinAt = prev.checkinAt; sch.checkinFired = true; } else sch.checkinFired = !!sch.checkinAt && sch.checkinAt <= now;
+  if (keep.stroll) { sch.strollAt = prev.strollAt; sch.strollFired = true; } else sch.strollFired = !!sch.strollAt && sch.strollAt <= now;
 }
 
 function snooze(state, activityId, now) {
@@ -249,6 +303,7 @@ function recapSummary(history, now) {
 
 module.exports = {
   MIN, SNOOZE_MS, SNOOZE_STALE_MS, MOVIE_HOLD_MS, TICK_MS,
-  parseHM, dayKey, activeWindow, planDay, planPep, nextWeeklyAt, movieDueAt, recapDueAt, chooseActivity, tick, replanToday,
+  parseHM, dayKey, activeWindow, planDay, planPep, planCameo, planCameos, nextWeeklyAt, movieDueAt, recapDueAt, chooseActivity, tick, replanToday,
   isQuiet, setQuiet, snooze, markDone, markOpened, recapSummary, needsGentleReturn, chooseEasyActivity, goodnightDue,
+  noteMovieOpened, clearMovieFollowup, countDone, milestoneFor, MILESTONES,
 };

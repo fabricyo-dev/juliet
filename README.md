@@ -10,7 +10,7 @@ npm start
 npm test
 ```
 
-Dev shortcuts: `JULIET_DEMO=nudge|gentle|movie|recap|pep|welcome|goodnight|phone|settings npm start` triggers that thing ~1.5 s after launch.
+Dev shortcuts: `JULIET_DEMO=nudge|gentle|movie|recap|pep|checkin|morning|stroll|followup|welcome|goodnight|phone|settings npm start` triggers that thing ~1.5 s after launch.
 
 ## Build the Mac app
 
@@ -18,7 +18,7 @@ Dev shortcuts: `JULIET_DEMO=nudge|gentle|movie|recap|pep|welcome|goodnight|phone
 npm run dist
 ```
 
-Produces `dist/Juliet-1.0.0-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Silicon). The app is **unsigned** (no Apple developer account).
+Produces `dist/Juliet-1.1.0-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Silicon). The app is **unsigned** (no Apple developer account).
 
 **First open on Areej's Mac:** open the `.dmg`, drag Juliet to Applications, then **right-click → Open → Open**. If macOS still refuses: System Settings → Privacy & Security → scroll down → **Open Anyway**. After that she launches at login on her own — look for the little cat in the menu bar.
 
@@ -37,6 +37,11 @@ Produces `dist/Juliet-1.0.0-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Si
 - **Pep talks** (default 3/week, 0–7 in Settings → Schedule, or menu-bar "Pep talk now"): she shows up with no task, just "Stop overthinking — you've got this. You are the smartest, most talented, well-spoken person I know." Lines live in `src/main/defaults.js` (`PEP_LINES`). Never lands within 30 min of a nudge; same presence/quiet rules.
 - **First launch**: the first time she's at the Mac, Juliet introduces herself ("Hi Areej. I'm Juliet. Mirza built me for you…") with a button straight into Settings. Once only.
 - **Gentle return**: if nothing has been done or opened for 5+ days, the next nudge softens ("no pressure — want to start small?") and picks a quick activity (the ones flagged `easy` in defaults).
+- **Check-ins** (default 2/week): "How's today going, Areej?" — *Rough* → she says she'll leave you be and switches Quiet on for two hours; *Okay* / *Great* get a line back.
+- **Good morning** (on by default): the first time she's at the Mac each day (within 4 h of active start) — "Morning, Areej." Skipped if a nudge is already due, so it's never two visits in a row.
+- **Movie follow-up**: the day after a movie was opened, from noon: "How was *Her*?" — *Loved it* (kept in Settings → Movies → Loved), *Meh*, *Didn't watch* (back on the list).
+- **Milestones**: at 10 / 25 / 50 / 100 / 250 Did-its the cheer becomes a milestone line ("That's ten. You're doing the thing.").
+- **Cameo walks** (default 2/week): she just strolls across the screen, no bubble.
 - **Goodnight** (off by default, Settings → Schedule): once per night, ~90 min after active hours end, if she's still at the Mac: "It's late. Sleep is a study strategy too."
 - **iPhone pings** (off by default, Settings → iPhone): install the free ntfy app, subscribe to the private topic Juliet shows you, send a test. From then on anything due while she's *away* from the Mac (locked, idle, elsewhere) goes to her iPhone instead — nudges (tap opens the link), pep talks, movie night (tap opens Netflix search), the recap. At the Mac the cat still handles it; never both. Goodnight stays Mac-only. This is the app's only network use.
 - Juliet appears on the display your mouse is on.

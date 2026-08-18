@@ -48,11 +48,16 @@
     <h3>Seen <small id="seenCount"></small></h3>
     <ul id="seen"></ul>
     <div class="row"><button id="clearSeen" class="ghost">Put all back</button></div>
+    <h3>Loved <small id="favCount"></small></h3>
+    <ul id="favs"></ul>
   </section>
 
   <section id="tab-schedule" hidden>
     <label>Nudges per day <input id="nudgesPerDay" type="number" min="1" max="8"></label>
     <label>Pep talks per week <input id="pepPerWeek" type="number" min="0" max="7"> <span class="hint">(she just shows up to say you've got this)</span></label>
+    <label>Check-ins per week <input id="checkinPerWeek" type="number" min="0" max="7"> <span class="hint">("How's today going?" — Rough gives you two quiet hours)</span></label>
+    <label>Cameo walks per week <input id="strollPerWeek" type="number" min="0" max="7"> <span class="hint">(she just strolls across, no bubble)</span></label>
+    <label><input id="morningEnabled" type="checkbox"> Good morning — a hello the first time I'm at the Mac each day</label>
     <label>Active hours <input id="activeStart" type="time"> to <input id="activeEnd" type="time"></label>
     <label>Movie night
       <select id="movieDay">

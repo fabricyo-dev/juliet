@@ -151,6 +151,15 @@
     fill(p);
     bubble.hidden = true;
     pendingLeave = null;
+    if (p && p.silent) {
+      // cameo: just stroll across the whole screen, no stop, no bubble
+      walkFrom = -CELL;
+      setX(walkFrom);
+      startClip('walkRight', performance.now());
+      phase = 'walkOut';
+      nextFrame(loop);
+      return;
+    }
     // walk in from the left edge and stop 20–40 % across, on a whole number of steps so the stride completes
     const target = W() * (0.2 + Math.random() * 0.2);
     walkFrom = -CELL;
@@ -180,7 +189,7 @@
     if (hop) {
       // Celebrate in the bubble (no jump pose exists in the sprite pack, and bouncing the sprite reads as flying).
       phase = 'cheer';
-      titleEl.textContent = CHEERS[Math.floor(Math.random() * CHEERS.length)];
+      titleEl.textContent = (p && typeof p.cheer === 'string' && p.cheer) || CHEERS[Math.floor(Math.random() * CHEERS.length)];
       lineEl.textContent = '';
       buttonsEl.replaceChildren();
       bubble.hidden = false;

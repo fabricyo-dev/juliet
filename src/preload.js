@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('juliet', {
   restoreDefaults: () => ipcRenderer.invoke('settings:restoreDefaults'),
   unpickMovie: (title) => ipcRenderer.invoke('settings:unpickMovie', String(title)),
   rate: (value) => ipcRenderer.invoke('settings:rate', Number(value)),
+  unfavourite: (title) => ipcRenderer.invoke('settings:unfavourite', String(title)),
   onTab: (cb) => ipcRenderer.on('settings:tab', (_e, tab) => cb(tab)),
   phoneEnable: (on) => ipcRenderer.invoke('phone:enable', !!on),
   phoneNewTopic: () => ipcRenderer.invoke('phone:newTopic'),

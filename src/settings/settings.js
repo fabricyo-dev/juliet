@@ -92,9 +92,22 @@
       return li;
     }));
 
+    const favs = state.favourites || [];
+    $('favCount').textContent = favs.length ? `(${favs.length})` : '';
+    $('favs').replaceChildren(...favs.slice().reverse().map((f) => {
+      const li = document.createElement('li'); li.textContent = f.title;
+      const b = document.createElement('button'); b.textContent = 'remove';
+      b.onclick = async () => { state = await window.juliet.unfavourite(f.title); render(); };
+      li.append(b);
+      return li;
+    }));
+
     const s = state.settings;
     $('nudgesPerDay').value = s.nudgesPerDay;
     $('pepPerWeek').value = s.pepPerWeek;
+    $('checkinPerWeek').value = s.checkinPerWeek;
+    $('strollPerWeek').value = s.strollPerWeek;
+    $('morningEnabled').checked = !!s.morningEnabled;
     $('activeStart').value = s.activeStart;
     $('activeEnd').value = s.activeEnd;
     $('movieDay').value = String(s.movieDay);
@@ -128,6 +141,9 @@
     settings: {
       nudgesPerDay: $('nudgesPerDay').value,
       pepPerWeek: $('pepPerWeek').value,
+      checkinPerWeek: $('checkinPerWeek').value,
+      strollPerWeek: $('strollPerWeek').value,
+      morningEnabled: $('morningEnabled').checked,
       activeStart: $('activeStart').value,
       activeEnd: $('activeEnd').value,
       movieDay: $('movieDay').value,
