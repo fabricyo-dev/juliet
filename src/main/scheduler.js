@@ -43,14 +43,30 @@ function planDay(settings, ms, rng = Math.random) {
   return out.sort((a, b) => a - b);
 }
 
-function movieDueAt(settings, fromMs) {
-  const target = parseHM(settings.movieTime);
+// Next occurrence of weekday `day` (0 = Sunday) at "HH:MM" strictly after fromMs.
+function nextWeeklyAt(day, time, fromMs) {
+  const target = parseHM(time);
   const d = new Date(fromMs);
   for (let i = 0; i < 8; i++) {
     const cand = new Date(d.getFullYear(), d.getMonth(), d.getDate() + i, 0, target).getTime();
-    if (new Date(cand).getDay() === (settings.movieDay | 0) && cand > fromMs) return cand;
+    if (new Date(cand).getDay() === (day | 0) && cand > fromMs) return cand;
   }
-  throw new Error('movieDueAt: no candidate');
+  throw new Error('nextWeeklyAt: no candidate');
+}
+function movieDueAt(settings, fromMs) { return nextWeeklyAt(settings.movieDay, settings.movieTime, fromMs); }
+function recapDueAt(settings, fromMs) { return nextWeeklyAt(settings.recapDay, settings.recapTime, fromMs); }
+
+// ---- quiet mode ("not now") ----
+function isQuiet(state, now) {
+  const q = state.schedule.quietUntil;
+  return !!q && now < q;
+}
+// mode: 'hours2' | 'today' (until local midnight) | 'off'
+function setQuiet(state, now, mode) {
+  const sch = state.schedule;
+  if (mode === 'hours2') sch.quietUntil = now + 2 * 60 * MIN;
+  else if (mode === 'today') { const d = new Date(now); sch.quietUntil = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime(); }
+  else sch.quietUntil = null;
 }
 
 function chooseActivity(activities, recent, rng = Math.random) {
@@ -77,9 +93,12 @@ function tick(state, now, present, rng = Math.random) {
     sch.slots = planDay(settings, now, rng);
     sch.fired = [];
   }
-  // 2. movie bookkeeping (48 h hold, then drop to next occurrence)
+  // 2. weekly bookkeeping (48 h hold, then drop to next occurrence)
   if (!sch.movieNextAt) sch.movieNextAt = movieDueAt(settings, now);
   if (now - sch.movieNextAt > MOVIE_HOLD_MS) sch.movieNextAt = movieDueAt(settings, now);
+  if (!sch.recapNextAt) sch.recapNextAt = recapDueAt(settings, now);
+  if (now - sch.recapNextAt > MOVIE_HOLD_MS) sch.recapNextAt = recapDueAt(settings, now);
+  if (sch.quietUntil && now >= sch.quietUntil) sch.quietUntil = null; // quiet period over
 
   // 3. drop expired slots once the active window has passed
   const { start, end } = activeWindow(settings, now);
@@ -90,12 +109,16 @@ function tick(state, now, present, rng = Math.random) {
   // 4. drop stale snoozes
   sch.snoozed = (sch.snoozed || []).filter((s) => now - s.at <= SNOOZE_STALE_MS);
 
-  if (!present) return null;
+  if (!present || isQuiet(state, now)) return null;
 
-  // 5. movie
+  // 5. movie, then weekly recap
   if (now >= sch.movieNextAt) {
     sch.movieNextAt = movieDueAt(settings, now);
     return { kind: 'movie' };
+  }
+  if (settings.recapEnabled && now >= sch.recapNextAt) {
+    sch.recapNextAt = recapDueAt(settings, now);
+    return { kind: 'recap' };
   }
   // 6. snoozed
   const dueSnooze = sch.snoozed.find((s) => s.at <= now);
@@ -130,11 +153,34 @@ function replanToday(state, now, rng = Math.random) {
 function snooze(state, activityId, now) {
   state.schedule.snoozed = [...(state.schedule.snoozed || []), { activityId, at: now + SNOOZE_MS }];
 }
-function markDone(state, activityId, now) {
-  state.history = [...(state.history || []), { activityId, at: now }];
+const HISTORY_MAX = 2000;
+function record(state, activityId, now, outcome) {
+  state.history = [...(state.history || []), { activityId, at: now, outcome }].slice(-HISTORY_MAX);
+}
+function markDone(state, activityId, now) { record(state, activityId, now, 'done'); }
+function markOpened(state, activityId, now) { record(state, activityId, now, 'opened'); }
+
+// ---- weekly recap ----
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const WEEK_MS = 7 * 24 * 60 * MIN;
+// Entries without an outcome predate the field and were all "done".
+function recapSummary(history, now) {
+  const recent = (history || []).filter((h) => h.at > now - WEEK_MS && h.at <= now);
+  const doneEntries = recent.filter((h) => !h.outcome || h.outcome === 'done');
+  const opened = recent.filter((h) => h.outcome === 'opened').length;
+  const perDay = new Array(7).fill(0);
+  for (const h of doneEntries) perDay[new Date(h.at).getDay()]++;
+  let bestDay = null, best = 0;
+  perDay.forEach((n, i) => { if (n > best) { best = n; bestDay = DAY_NAMES[i]; } });
+  const done = doneEntries.length;
+  const line = done + opened === 0
+    ? 'Quiet week — no worries. Fresh start tomorrow?'
+    : `This week: ${done} done · ${opened} opened${bestDay ? ` · best day ${bestDay}` : ''}.`;
+  return { done, opened, bestDay, line };
 }
 
 module.exports = {
   MIN, SNOOZE_MS, SNOOZE_STALE_MS, MOVIE_HOLD_MS, TICK_MS,
-  parseHM, dayKey, activeWindow, planDay, movieDueAt, chooseActivity, tick, replanToday, snooze, markDone,
+  parseHM, dayKey, activeWindow, planDay, nextWeeklyAt, movieDueAt, recapDueAt, chooseActivity, tick, replanToday,
+  isQuiet, setQuiet, snooze, markDone, markOpened, recapSummary,
 };

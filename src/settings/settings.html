@@ -54,8 +54,16 @@
       </select>
       at <input id="movieTime" type="time">
     </label>
+    <label><input id="recapEnabled" type="checkbox"> Weekly recap
+      <select id="recapDay">
+        <option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option>
+        <option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option>
+        <option value="6">Saturday</option>
+      </select>
+      at <input id="recapTime" type="time">
+    </label>
     <label><input id="launchAtLogin" type="checkbox"> Launch Juliet at login</label>
-    <p class="hint">Juliet only shows up while you're actually at the Mac (awake, unlocked, recently active). Missed slots are dropped, not stacked.</p>
+    <p class="hint">Juliet only shows up while you're actually at the Mac (awake, unlocked, recently active). Missed slots are dropped, not stacked. Need a break? Menu-bar cat → Quiet… (2 hours or the rest of today).</p>
     <p id="stats" class="hint"></p>
     <div class="row">
       <button id="testNudge" class="ghost">Send Juliet now</button>

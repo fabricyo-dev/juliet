@@ -142,7 +142,7 @@ test('movie takes priority over a due nudge slot', () => {
 test('markDone appends to history', () => {
   const st = fresh(at(2026, 8, 18, 9));
   S.markDone(st, 'cs50', at(2026, 8, 18, 10));
-  assert.deepEqual(st.history, [{ activityId: 'cs50', at: at(2026, 8, 18, 10) }]);
+  assert.deepEqual(st.history, [{ activityId: 'cs50', at: at(2026, 8, 18, 10), outcome: 'done' }]);
 });
 
 test('replanToday: fresh plan for today, past slots pre-consumed, no immediate fire', () => {
@@ -156,4 +156,89 @@ test('replanToday: fresh plan for today, past slots pre-consumed, no immediate f
   assert.equal(S.tick(st, now, true, seq(0.5)), null); // nothing pending right after a save
   const future = st.schedule.slots.filter((t) => t > now);
   if (future.length) assert.equal(S.tick(st, future[0] + 1000, true, seq(0.5)).kind, 'nudge');
+});
+
+// ---- quiet mode ----
+test('setQuiet: 2h / rest of today / off; isQuiet reflects it', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  const now = at(2026, 8, 18, 14, 10);
+  S.setQuiet(st, now, 'hours2');
+  assert.equal(st.schedule.quietUntil, now + 2 * H);
+  assert.equal(S.isQuiet(st, now), true);
+  assert.equal(S.isQuiet(st, now + 2 * H), false);
+  S.setQuiet(st, now, 'today');
+  assert.equal(st.schedule.quietUntil, at(2026, 8, 19, 0, 0));
+  assert.equal(S.isQuiet(st, at(2026, 8, 18, 23, 59)), true);
+  assert.equal(S.isQuiet(st, at(2026, 8, 19, 0, 0)), false);
+  S.setQuiet(st, now, 'off');
+  assert.equal(st.schedule.quietUntil, null);
+  assert.equal(S.isQuiet(st, now), false);
+});
+
+test('tick never fires while quiet, holds the slot, fires after quiet ends (inside hours)', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.schedule.slots = [at(2026, 8, 18, 12)]; st.schedule.fired = [];
+  S.setQuiet(st, at(2026, 8, 18, 11), 'hours2'); // until 13:00
+  assert.equal(S.tick(st, at(2026, 8, 18, 12, 1), true, seq(0.5)), null);
+  assert.deepEqual(st.schedule.fired, []);
+  assert.equal(S.tick(st, at(2026, 8, 18, 13, 1), true, seq(0.5)).kind, 'nudge');
+});
+
+test('tick: rest-of-today quiet drops today\'s slots at active end and clears itself tomorrow', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.schedule.slots = [at(2026, 8, 18, 15)]; st.schedule.fired = [];
+  S.setQuiet(st, at(2026, 8, 18, 14), 'today');
+  assert.equal(S.tick(st, at(2026, 8, 18, 22, 30), true, seq(0.5)), null);
+  assert.deepEqual(st.schedule.fired, [at(2026, 8, 18, 15)]);
+  S.tick(st, at(2026, 8, 19, 9, 5), true, seq(0.5));
+  assert.equal(st.schedule.quietUntil, null); // expired quiet is cleaned up
+});
+
+// ---- weekly recap ----
+test('recap: due Sunday 18:00, held while absent, fires when present, movie wins over recap', () => {
+  const st = fresh(at(2026, 8, 18, 9)); // Tue
+  assert.equal(st.schedule.recapNextAt, at(2026, 8, 23, 18)); // Sun
+  st.schedule.slots = []; st.schedule.fired = [];
+  st.schedule.movieNextAt = at(2026, 9, 25, 19); // keep Friday's (held) movie out of the way
+  assert.equal(S.tick(st, at(2026, 8, 23, 18, 1), false, seq(0.5)), null);
+  assert.deepEqual(S.tick(st, at(2026, 8, 23, 19), true, seq(0.5)), { kind: 'recap' });
+  assert.equal(st.schedule.recapNextAt, at(2026, 8, 30, 18));
+  // movie + recap due at once → movie first, recap on the next tick
+  st.settings.movieDay = 0; st.settings.movieTime = '18:00';
+  st.schedule.movieNextAt = at(2026, 8, 30, 18);
+  assert.deepEqual(S.tick(st, at(2026, 8, 30, 18, 1), true, seq(0.5)), { kind: 'movie' });
+  assert.deepEqual(S.tick(st, at(2026, 8, 30, 18, 2), true, seq(0.5)), { kind: 'recap' });
+});
+
+test('recap: disabled → never fires; dropped after 48 h', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.schedule.movieNextAt = at(2026, 9, 25, 19);
+  st.settings.activeStart = '20:00'; st.settings.activeEnd = '22:00'; // no nudge slot can be due at 19:00
+  st.settings.recapEnabled = false;
+  assert.equal(S.tick(st, at(2026, 8, 23, 19), true, seq(0.5)), null);
+  st.settings.recapEnabled = true;
+  st.schedule.recapNextAt = at(2026, 8, 23, 18);
+  S.tick(st, at(2026, 8, 25, 20), false, seq(0.5)); // Tue 20:00 > 48h
+  assert.equal(st.schedule.recapNextAt, at(2026, 8, 30, 18));
+});
+
+test('markOpened records an "opened" outcome; recapSummary counts the last 7 days and finds the best day', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  S.markDone(st, 'cs50', at(2026, 8, 18, 10));      // Tue
+  S.markDone(st, 'leetcode', at(2026, 8, 18, 15));  // Tue
+  S.markDone(st, 'usaco', at(2026, 8, 20, 11));     // Thu
+  S.markOpened(st, 'arxiv', at(2026, 8, 21, 12));   // Fri
+  S.markDone(st, 'old', at(2026, 8, 10, 12));       // > 7 days ago
+  assert.equal(st.history.find((h) => h.activityId === 'arxiv').outcome, 'opened');
+  const r = S.recapSummary(st.history, at(2026, 8, 23, 18));
+  assert.equal(r.done, 3); assert.equal(r.opened, 1); assert.equal(r.bestDay, 'Tuesday');
+  assert.equal(r.line, 'This week: 3 done · 1 opened · best day Tuesday.');
+  const empty = S.recapSummary([{ activityId: 'x', at: at(2026, 8, 1, 1) }], at(2026, 8, 23, 18));
+  assert.deepEqual([empty.done, empty.opened, empty.bestDay], [0, 0, null]);
+  assert.match(empty.line, /quiet week/i);
+});
+
+test('history entries without an outcome count as done (older versions)', () => {
+  const r = S.recapSummary([{ activityId: 'a', at: at(2026, 8, 22, 9) }], at(2026, 8, 23, 18));
+  assert.equal(r.done, 1);
 });

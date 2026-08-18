@@ -32,6 +32,9 @@ Produces `dist/Juliet-1.0.0-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Si
 - *N* nudges/day (default 3) at random times inside active hours (default 09:00–22:00). A nudge fires only when the Mac is awake, unlocked, and used in the last 5 minutes. A slot that comes due while she's away is held and fires when she's back (if still inside hours); otherwise it's dropped. Slots never stack.
 - **Open** = launches the link. **Later** = comes back in 1 h. **Did it** = logged (count in Settings → Schedule). Clicking Juliet herself = Open. Ignored for 90 s → she walks off.
 - Movie night: default Friday 19:00. **Open** = Google + Netflix search tabs. **Different one** = re-roll. **Skip this week** = puts the title back, week consumed. When every movie is seen the list resets.
+- **Quiet…** (menu-bar cat): *For 2 hours* or *Rest of today*. Nothing fires while quiet; a slot that came due is held and fires once quiet ends (if still inside active hours) — never stacked. *Resume now* ends it early. "Send Juliet now" / "Pick a movie now" still work while quiet (you asked).
+- **Weekly recap** (default Sunday 18:00, editable / switchable in Settings → Schedule): "This week: 4 done · 2 opened · best day Tuesday." Counts **Did it** and **Open** clicks from the last 7 days. An empty week gets a gentle "Quiet week — no worries" and an *Open one now* button.
+- Juliet appears on the display your mouse is on.
 
 ## Art & animation
 

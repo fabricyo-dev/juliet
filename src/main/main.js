@@ -41,6 +41,7 @@ app.whenReady().then(() => {
   const demo = process.env.JULIET_DEMO;
   if (demo === 'nudge') setTimeout(() => fireNudge(), 1500);
   if (demo === 'movie') setTimeout(() => fireMovie(), 1500);
+  if (demo === 'recap') setTimeout(() => fireRecap(), 1500);
   if (demo === 'settings') setTimeout(openSettings, 500);
 });
 app.on('window-all-closed', () => { /* keep running in the menu bar */ });
@@ -53,10 +54,32 @@ function makeTray() {
   tray.setToolTip('Juliet');
   refreshTrayMenu();
 }
+function hhmm(ms) {
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+function setQuiet(mode) {
+  S.setQuiet(store.state, Date.now(), mode);
+  store.save();
+  refreshTrayMenu();
+}
 function refreshTrayMenu() {
+  const now = Date.now();
+  const quiet = S.isQuiet(store.state, now);
+  const quietLabel = quiet ? `Quiet until ${hhmm(store.state.schedule.quietUntil)}` : 'Quiet…';
+  tray.setToolTip(quiet ? `Juliet — ${quietLabel.toLowerCase()}` : 'Juliet');
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Send Juliet now', click: () => fireNudge() },
     { label: 'Pick a movie now', click: () => fireMovie() },
+    {
+      label: quietLabel,
+      submenu: [
+        { label: 'For 2 hours', click: () => setQuiet('hours2') },
+        { label: 'Rest of today', click: () => setQuiet('today') },
+        { type: 'separator' },
+        { label: 'Resume now', enabled: quiet, click: () => setQuiet('off') },
+      ],
+    },
     { type: 'separator' },
     { label: 'Settings…', click: openSettings },
     {
@@ -73,12 +96,17 @@ function applyLoginItem() {
 }
 
 // ---------- scheduling ----------
+let trayShowedQuiet = false;
 function tick() {
   try {
-    const fire = S.tick(store.state, Date.now(), presence.isPresent() && !overlay);
+    const now = Date.now();
+    const fire = S.tick(store.state, now, presence.isPresent() && !overlay);
     store.save();
+    const quietNow = S.isQuiet(store.state, now);
+    if (quietNow !== trayShowedQuiet) { trayShowedQuiet = quietNow; refreshTrayMenu(); }
     if (!fire) return;
     if (fire.kind === 'movie') fireMovie();
+    else if (fire.kind === 'recap') fireRecap();
     else fireNudge(fire.activityId);
   } catch (e) {
     console.error('tick failed', e);
@@ -88,7 +116,7 @@ function tick() {
 // ---------- overlay ----------
 function ensureOverlay() {
   if (overlay) return overlay;
-  const { workArea } = screen.getPrimaryDisplay();
+  const { workArea } = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()); // wherever she is working
   overlay = new BrowserWindow({
     x: workArea.x, y: workArea.y, width: workArea.width, height: workArea.height,
     transparent: true, frame: false, hasShadow: false, resizable: false, movable: false,
@@ -172,6 +200,20 @@ function fireMovie() {
   sendShow(moviePayload(r.title));
 }
 
+function fireRecap() {
+  if (overlay) return;
+  const r = S.recapSummary(store.state.history, Date.now());
+  current = { kind: 'recap' };
+  sendShow({
+    kind: 'recap',
+    title: 'Weekly recap, Areej',
+    line: r.line,
+    buttons: r.done + r.opened === 0
+      ? [{ id: 'open', label: 'Open one now' }, { id: 'ack', label: 'OK' }]
+      : [{ id: 'ack', label: 'Nice' }],
+  });
+}
+
 async function openAll(urls) {
   try {
     for (const u of urls) await shell.openExternal(u);
@@ -201,7 +243,7 @@ ipcMain.on('overlay:action', async (_e, id) => {
     if (current.kind === 'nudge') {
       const a = current.activity;
       if (id === 'open' || id === 'cat') {
-        if (await openAll([a.url])) leave(false);
+        if (await openAll([a.url])) { S.markOpened(store.state, a.id, now); store.save(); leave(false); }
         else sendShow(couldNotOpenPayload('nudge', `Areej — ${a.name}`));
       } else if (id === 'later') { S.snooze(store.state, a.id, now); store.save(); leave(false); }
       else if (id === 'done') { S.markDone(store.state, a.id, now); store.save(); leave(true); }
@@ -218,6 +260,12 @@ ipcMain.on('overlay:action', async (_e, id) => {
       } else { // skip / ack / timeout: she didn't watch it — put it back
         store.state.movies = L.unpickMovie(store.state.movies, title); store.save(); leave(false);
       }
+    } else if (current.kind === 'recap') {
+      if (id === 'open' || id === 'cat') {
+        const a = S.chooseActivity(store.state.activities, store.state.schedule.recent);
+        if (a && await openAll([a.url])) { S.markOpened(store.state, a.id, now); store.save(); }
+      }
+      leave(false);
     } else { // nomovie
       if (id === 'settings') openSettings();
       leave(false);
@@ -258,11 +306,16 @@ ipcMain.handle('settings:save', (_e, patch) => {
     if (!/^\d{2}:\d{2}$/.test(s.activeStart)) s.activeStart = st.settings.activeStart;
     if (!/^\d{2}:\d{2}$/.test(s.activeEnd)) s.activeEnd = st.settings.activeEnd;
     if (!/^\d{2}:\d{2}$/.test(s.movieTime)) s.movieTime = st.settings.movieTime;
+    s.recapEnabled = !!s.recapEnabled;
+    s.recapDay = Math.max(0, Math.min(6, parseInt(s.recapDay, 10) || 0));
+    if (!/^\d{2}:\d{2}$/.test(s.recapTime)) s.recapTime = st.settings.recapTime;
+    const recapChanged = s.recapDay !== st.settings.recapDay || s.recapTime !== st.settings.recapTime;
     const planChanged = s.nudgesPerDay !== st.settings.nudgesPerDay || s.activeStart !== st.settings.activeStart || s.activeEnd !== st.settings.activeEnd;
     const movieChanged = s.movieDay !== st.settings.movieDay || s.movieTime !== st.settings.movieTime;
     st.settings = s;
     if (planChanged) S.replanToday(st, Date.now()); // new plan governs only the rest of today
     if (movieChanged) st.schedule.movieNextAt = null; // recompute
+    if (recapChanged) st.schedule.recapNextAt = null;
     applyLoginItem();
     refreshTrayMenu();
   }

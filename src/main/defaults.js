@@ -25,6 +25,9 @@ const DEFAULT_SETTINGS = {
   activeEnd: '22:00',
   movieDay: 5, // 0 = Sunday … 6 = Saturday
   movieTime: '19:00',
+  recapEnabled: true,
+  recapDay: 0, // Sunday
+  recapTime: '18:00',
   launchAtLogin: true,
   presenceIdleSeconds: 300,
 };
@@ -38,7 +41,7 @@ function defaultState() {
     activities: DEFAULT_ACTIVITIES.map((a) => ({ ...a })),
     movies: { unseen: [...PLACEHOLDER_MOVIES], seen: [] },
     history: [],
-    schedule: { planDate: null, slots: [], fired: [], snoozed: [], recent: [], movieNextAt: null },
+    schedule: { planDate: null, slots: [], fired: [], snoozed: [], recent: [], movieNextAt: null, recapNextAt: null, quietUntil: null },
   };
 }
 

@@ -57,10 +57,13 @@
     $('activeEnd').value = s.activeEnd;
     $('movieDay').value = String(s.movieDay);
     $('movieTime').value = s.movieTime;
+    $('recapEnabled').checked = !!s.recapEnabled;
+    $('recapDay').value = String(s.recapDay);
+    $('recapTime').value = s.recapTime;
     $('launchAtLogin').checked = !!s.launchAtLogin;
 
     const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
-    const n = (state.history || []).filter((h) => h.at >= monthStart.getTime()).length;
+    const n = (state.history || []).filter((h) => (!h.outcome || h.outcome === 'done') && h.at >= monthStart.getTime()).length;
     $('stats').textContent = `Done this month: ${n}`;
   }
   async function save(patch) { state = await window.juliet.save(patch); render(); }
@@ -79,6 +82,9 @@
       activeEnd: $('activeEnd').value,
       movieDay: $('movieDay').value,
       movieTime: $('movieTime').value,
+      recapEnabled: $('recapEnabled').checked,
+      recapDay: $('recapDay').value,
+      recapTime: $('recapTime').value,
       launchAtLogin: $('launchAtLogin').checked,
     },
   });

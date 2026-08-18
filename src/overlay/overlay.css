@@ -6,8 +6,6 @@ html, body {
 /* One 128×128 cell. Anchor (64,120) is Juliet's ground point, so the cell hangs 8 px below the screen edge. */
 #hit { position: absolute; left: 0; bottom: -8px; width: 128px; height: 128px; }
 #cat { display: block; width: 128px; height: 128px; image-rendering: pixelated; cursor: pointer; }
-#cat.hop { animation: hop 0.6s ease-in-out 2; }
-@keyframes hop { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
 
 #bubble {
   position: absolute; bottom: 130px; left: 50%; transform: translateX(-50%);

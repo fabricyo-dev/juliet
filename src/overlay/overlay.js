@@ -8,7 +8,8 @@
   const CYCLE_PX = (SPEED * CYCLE_MS) / 1000;           // 96 px per step
   const TIMEOUT_MS = 90_000;                            // ignored bubble → she leaves
   const EDGE = 200;                                     // px from a screen edge where the bubble edge-anchors
-  const HOP_MS = 1200;                                  // "Did it" bounce (2 × 0.6 s CSS keyframes)
+  const CHEER_MS = 1100;                                // "Did it": a short cheer in the bubble before she turns back
+  const CHEERS = ["Nice one, Areej! 🎉", "That's the way! ✨", "Look at you go. 💪"];
   const ACTED_WATCHDOG_MS = 8000;                       // max wait for main's overlay:leave after an action
 
   const hit = document.getElementById('hit');
@@ -67,7 +68,7 @@
   }
 
   // ---- clip player ----
-  // phases: idle → walkIn → turnIn → talk → acted → (hop) → turnBack → walkOut → gone
+  // phases: idle → walkIn → turnIn → talk → acted → (cheer) → turnBack → walkOut → gone
   let phase = 'idle';
   let clip = null, clipStart = 0, firedEvents = null;
   let x = 0, walkFrom = 0, stopX = 0, walkCycles = 0;
@@ -174,9 +175,13 @@
     if (phase !== 'talk' && phase !== 'acted') return;
     clearTimeout(timeoutId);
     if (hop) {
-      phase = 'hop';
-      canvas.classList.add('hop');
-      setTimeout(() => { canvas.classList.remove('hop'); turnBack(); }, HOP_MS);
+      // Celebrate in the bubble (no jump pose exists in the sprite pack, and bouncing the sprite reads as flying).
+      phase = 'cheer';
+      titleEl.textContent = CHEERS[Math.floor(Math.random() * CHEERS.length)];
+      lineEl.textContent = '';
+      buttonsEl.replaceChildren();
+      bubble.hidden = false;
+      setTimeout(turnBack, CHEER_MS);
     } else turnBack();
   }
   function turnBack() {
@@ -205,7 +210,7 @@
         phase = 'talk';
         if (pendingLeave) { const pl = pendingLeave; pendingLeave = null; leave(pl); }
       }
-    } else if (phase === 'talk' || phase === 'acted' || phase === 'hop') {
+    } else if (phase === 'talk' || phase === 'acted' || phase === 'cheer') {
       const step = A.stepAt(clip, t);
       draw(clip.sheet, step.frame);
       frameEvents(step);
@@ -222,7 +227,7 @@
   }
 
   // Only capture the mouse while she is talking (bubble + buttons live); walking is always click-through.
-  hit.addEventListener('pointerenter', () => { if (phase === 'talk' || phase === 'acted' || phase === 'hop') window.juliet.setHit(true); });
+  hit.addEventListener('pointerenter', () => { if (phase === 'talk' || phase === 'acted' || phase === 'cheer') window.juliet.setHit(true); });
   hit.addEventListener('pointerleave', () => window.juliet.setHit(false));
   canvas.addEventListener('click', () => act('cat'));
 
