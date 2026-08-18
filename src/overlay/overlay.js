@@ -1,11 +1,14 @@
 (function () {
   'use strict';
-  const SP = window.JULIET_SPRITE;
-  const SCALE = 6, PX = SP.SIZE * SCALE; // 96 px on screen
-  const SPEED = 120; // px/s
-  const WALK_FPS = 8;
-  const TIMEOUT_MS = 90_000;
-  const EDGE = 200; // px from a screen edge where the bubble switches to edge-anchoring
+  const A = window.JULIET_ANIM;
+  const CELL = A.CELL; // 128 px cell drawn 1:1 in CSS px (nearest-neighbour upscales on Retina)
+  const ASSET_BASE = '../../assets/juliet/';
+  const SPEED = 120;                                    // px/s while walking
+  const CYCLE_MS = A.timeline('walkRight').total;       // 800 ms per 8-frame step
+  const CYCLE_PX = (SPEED * CYCLE_MS) / 1000;           // 96 px per step
+  const TIMEOUT_MS = 90_000;                            // ignored bubble → she leaves
+  const EDGE = 200;                                     // px from a screen edge where the bubble edge-anchors
+  const HOP_MS = 1200;                                  // "Did it" bounce (2 × 0.6 s CSS keyframes)
 
   const hit = document.getElementById('hit');
   const canvas = document.getElementById('cat');
@@ -17,68 +20,110 @@
 
   // ---- demo bridge (plain browser only; Electron injects window.juliet via preload) ----
   if (!window.juliet) {
-    const q = new URLSearchParams(location.search).get('demo') || 'nudge';
+    const q = new URLSearchParams(location.search);
+    const kind = q.get('demo') || 'hi';
+    const auto = q.get('auto') === '1';
     const listeners = {};
-    const demoPayload = () => q === 'movie'
-      ? { kind: 'movie', title: 'Movie night, Areej: The Social Network', line: 'I can open Google + Netflix search for it.', fromLeft: Math.random() < 0.5,
-          buttons: [{ id: 'open', label: 'Open' }, { id: 'different', label: 'Different one' }, { id: 'skip', label: 'Skip this week' }], spriteSheetUrl: null }
-      : { kind: 'nudge', title: 'Areej — LeetCode daily problem', line: 'Fifteen minutes counts. Want me to open it?', fromLeft: Math.random() < 0.5,
-          buttons: [{ id: 'open', label: 'Open' }, { id: 'later', label: 'Later' }, { id: 'done', label: 'Did it' }], spriteSheetUrl: null };
+    const payloads = {
+      hi: () => ({}), // no text → the manifest's default speech "Hi!"
+      nudge: () => ({ kind: 'nudge', title: 'Areej — LeetCode daily problem', line: 'Fifteen minutes counts. Want me to open it?',
+        buttons: [{ id: 'open', label: 'Open' }, { id: 'later', label: 'Later' }, { id: 'done', label: 'Did it' }] }),
+      movie: () => ({ kind: 'movie', title: 'Movie night, Areej: The Social Network', line: 'I can open Google + Netflix search for it.',
+        buttons: [{ id: 'open', label: 'Open' }, { id: 'different', label: 'Different one' }, { id: 'skip', label: 'Skip this week' }] }),
+    };
+    const payload = payloads[kind] || payloads.hi;
     window.juliet = {
       onShow: (cb) => (listeners.show = cb),
       onLeave: (cb) => (listeners.leave = cb),
       setHit: (v) => console.log('hit', v),
       action: (id) => { console.log('action', id); listeners.leave({ hop: id === 'done' }); },
-      gone: () => { console.log('gone'); setTimeout(() => listeners.show(demoPayload()), 800); },
+      gone: () => { console.log('gone'); setTimeout(() => listeners.show(payload()), 800); },
     };
-    setTimeout(() => listeners.show(demoPayload()), 300);
+    setTimeout(() => listeners.show(payload()), 300);
+    if (auto || kind === 'hi') {
+      // simulate the user acting a few seconds after speech starts
+      window.__demoAutoAct = () => setTimeout(() => act(kind === 'hi' ? 'timeout' : 'open'), 4000);
+    }
   }
 
-  // ---- sprite source: designer sheet (32 px frames) or built-in matrix (16 px) ----
-  let sheet = null; // {img, frame}
-  const frameCanvases = SP.FRAMES.map((rows) => {
-    const c = document.createElement('canvas'); c.width = SP.SIZE; c.height = SP.SIZE;
-    const g = c.getContext('2d');
-    rows.forEach((row, y) => [...row].forEach((ch, x) => {
-      if (ch !== '.') { g.fillStyle = SP.PALETTE[ch]; g.fillRect(x, y, 1, 1); }
-    }));
-    return c;
-  });
-  function loadSheet(url) {
-    if (!url || sheet) return;
+  // ---- sprite sheets ----
+  const sheets = {};
+  for (const [key, def] of Object.entries(A.SHEETS)) {
     const img = new Image();
-    img.onload = () => { if (img.width === 256 && img.height === 32) sheet = { img, frame: 32 }; };
-    img.src = url;
+    img.onerror = () => console.error('failed to load sheet', def.image);
+    img.src = ASSET_BASE + def.image;
+    sheets[key] = img;
   }
-  function drawFrame(i) {
+  const sheetsReady = () => Object.values(sheets).every((i) => i.complete && i.naturalWidth > 0);
+
+  function draw(sheetKey, frame) {
     ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, PX, PX);
-    if (sheet) ctx.drawImage(sheet.img, i * sheet.frame, 0, sheet.frame, sheet.frame, 0, 0, PX, PX);
-    else ctx.drawImage(frameCanvases[i], 0, 0, PX, PX);
+    ctx.clearRect(0, 0, CELL, CELL);
+    const r = A.frameRect(frame);
+    ctx.drawImage(sheets[sheetKey], r.x, r.y, r.w, r.h, 0, 0, CELL, CELL);
   }
 
-  // ---- state machine: idle -> walkIn -> talk -> (hop) -> walkOut -> gone ----
-  let x = 0, dir = 1, stopX = 0, phase = 'idle', tStart = 0, lastFrame = 0, timeoutId = null;
+  // ---- clip player ----
+  // phases: idle → walkIn → turnIn → talk → acted → (hop) → turnBack → walkOut → gone
+  let phase = 'idle';
+  let clip = null, clipStart = 0, firedEvents = null;
+  let x = 0, walkFrom = 0, stopX = 0, walkCycles = 0;
+  let timeoutId = null, pendingLeave = null;
   const W = () => window.innerWidth;
-  // rAF is paused while a document is hidden/occluded; fall back to a timer so Juliet never freezes mid-walk.
+
   function nextFrame(cb) {
+    // rAF is paused while a document is hidden/occluded; fall back to a timer so Juliet never freezes mid-walk
     if (document.hidden) setTimeout(() => cb(performance.now()), 1000 / 30);
     else requestAnimationFrame(cb);
   }
-
   function setX(v) { x = v; hit.style.left = `${Math.round(x)}px`; }
-  function face(d) { dir = d; canvas.classList.toggle('flip', d < 0); }
+  function startClip(name, now) {
+    clip = A.timeline(name);
+    clipStart = now;
+    firedEvents = new Set();
+  }
+  // Fire manifest events: {frame:n} when frame n first shows, {after:n} when frame n has finished (clip end).
+  function fireEvent(type) {
+    if (type === 'speechStart') talk();
+    else if (type === 'resumeWalkRight') { walkFrom = x; startClip('walkRight', performance.now()); phase = 'walkOut'; }
+    else console.warn('unknown animation event', type);
+  }
+  function frameEvents(step) {
+    for (const ev of clip.events) {
+      if (ev.frame === step.frame && !firedEvents.has(ev)) { firedEvents.add(ev); fireEvent(ev.type); }
+    }
+  }
+  function afterEvents() {
+    const last = clip.steps[clip.steps.length - 1].frame;
+    for (const ev of clip.events) {
+      if (ev.after === last && !firedEvents.has(ev)) { firedEvents.add(ev); fireEvent(ev.type); }
+    }
+  }
 
+  // ---- speech bubble (code-rendered; text is whatever the runtime sends, "Hi!" by default) ----
   function fill(p) {
-    titleEl.textContent = p.title;
-    lineEl.textContent = p.line || '';
-    buttonsEl.replaceChildren(...p.buttons.map((b) => {
+    titleEl.textContent = (p && p.title) || A.DEFAULT_SPEECH;
+    lineEl.textContent = (p && p.line) || '';
+    buttonsEl.replaceChildren(...((p && p.buttons) || []).map((b) => {
       const el = document.createElement('button');
       el.textContent = b.label;
       el.onclick = () => act(b.id);
       return el;
     }));
   }
+  function armTimeout() {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => act('timeout'), TIMEOUT_MS);
+  }
+  function talk() {
+    bubble.classList.toggle('edge-left', x < EDGE);
+    bubble.classList.toggle('edge-right', x > W() - EDGE - CELL);
+    bubble.hidden = false;
+    armTimeout();
+    if (window.__demoAutoAct) window.__demoAutoAct();
+  }
+
+  // ---- entry points from main ----
   function show(p) {
     if (phase !== 'idle' && phase !== 'gone') {
       // already on screen (e.g. movie re-roll): update the bubble in place and keep talking
@@ -86,28 +131,20 @@
       if (phase === 'talk' || phase === 'acted') { phase = 'talk'; bubble.hidden = false; armTimeout(); }
       return;
     }
-    if (W() < 200) { setTimeout(() => show(p), 100); return; } // viewport not laid out yet
-    loadSheet(p.spriteSheetUrl);
+    if (W() < 200 || !sheetsReady()) { setTimeout(() => show(p), 100); return; } // viewport / sheets not ready yet
     fill(p);
     bubble.hidden = true;
-    const fromLeft = !!p.fromLeft;
-    const frac = 0.2 + Math.random() * 0.2;
-    stopX = fromLeft ? W() * frac : W() * (1 - frac) - PX;
-    setX(fromLeft ? -PX : W());
-    face(fromLeft ? 1 : -1);
-    phase = 'walkIn'; tStart = performance.now(); lastFrame = tStart;
+    pendingLeave = null;
+    // walk in from the left edge and stop 20–40 % across, on a whole number of steps so the stride completes
+    const target = W() * (0.2 + Math.random() * 0.2);
+    walkFrom = -CELL;
+    walkCycles = Math.max(1, Math.ceil((target - walkFrom) / CYCLE_PX));
+    stopX = walkFrom + walkCycles * CYCLE_PX;
+    setX(walkFrom);
+    const now = performance.now();
+    startClip('walkRight', now);
+    phase = 'walkIn';
     nextFrame(loop);
-  }
-  function armTimeout() {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => act('timeout'), TIMEOUT_MS);
-  }
-  function talk() {
-    phase = 'talk';
-    bubble.classList.toggle('edge-left', x < EDGE);
-    bubble.classList.toggle('edge-right', x > W() - EDGE - PX);
-    bubble.hidden = false;
-    armTimeout();
   }
   function act(id) {
     if (phase !== 'talk') return;
@@ -117,34 +154,53 @@
     window.juliet.action(id);
   }
   function leave(p) {
+    const hop = !!(p && p.hop);
+    if (phase === 'walkIn' || phase === 'turnIn') { pendingLeave = { hop }; return; } // finish arriving first
+    if (phase !== 'talk' && phase !== 'acted') return;
     clearTimeout(timeoutId);
     bubble.hidden = true;
-    const hop = !!(p && p.hop);
-    phase = hop ? 'hop' : 'walkOut';
-    tStart = performance.now(); lastFrame = tStart;
-    if (!hop) face(x < W() / 2 ? -1 : 1);
-    nextFrame(loop);
+    if (hop) {
+      phase = 'hop';
+      canvas.classList.add('hop');
+      setTimeout(() => { canvas.classList.remove('hop'); turnBack(); }, HOP_MS);
+    } else turnBack();
+  }
+  function turnBack() {
+    phase = 'turnBack';
+    startClip('turnBackRight', performance.now());
   }
 
   function loop(now) {
-    // cap dt so a paused tab doesn't teleport her; allow bigger steps when timers are throttled (hidden)
-    const dt = Math.min(document.hidden ? 0.5 : 0.05, (now - lastFrame) / 1000); lastFrame = now;
-    const el = now - tStart;
+    const t = now - clipStart;
     if (phase === 'walkIn') {
-      setX(x + dir * SPEED * dt);
-      drawFrame(SP.FRAME_INDEX.WALK[Math.floor(el / (1000 / WALK_FPS)) % 4]);
-      if ((dir > 0 && x >= stopX) || (dir < 0 && x <= stopX)) { setX(stopX); talk(); }
-    } else if (phase === 'talk' || phase === 'acted') {
-      drawFrame(Math.floor(el / 250) % 16 === 15 ? SP.FRAME_INDEX.BLINK : SP.FRAME_INDEX.SIT);
-    } else if (phase === 'hop') {
-      const k = Math.floor(el / 140);
-      const seq = [SP.FRAME_INDEX.CROUCH, SP.FRAME_INDEX.AIR, SP.FRAME_INDEX.AIR, SP.FRAME_INDEX.CROUCH, SP.FRAME_INDEX.SIT];
-      drawFrame(seq[Math.min(k, seq.length - 1)]);
-      if (el > 900) { phase = 'walkOut'; tStart = now; face(x < W() / 2 ? -1 : 1); }
+      if (t >= walkCycles * CYCLE_MS) {
+        setX(stopX);
+        startClip('turnToUser', now);
+        phase = 'turnIn';
+      } else {
+        setX(walkFrom + (SPEED * t) / 1000);
+        draw(clip.sheet, A.stepAt(clip, t).frame);
+      }
+    } else if (phase === 'turnIn') {
+      const step = A.stepAt(clip, t);
+      if (step) draw(clip.sheet, step.frame);
+      else {
+        startClip('talkToUser', now);
+        phase = 'talk';
+        if (pendingLeave) { const pl = pendingLeave; pendingLeave = null; leave(pl); }
+      }
+    } else if (phase === 'talk' || phase === 'acted' || phase === 'hop') {
+      const step = A.stepAt(clip, t);
+      draw(clip.sheet, step.frame);
+      frameEvents(step);
+    } else if (phase === 'turnBack') {
+      const step = A.stepAt(clip, t);
+      if (step) draw(clip.sheet, step.frame);
+      else afterEvents(); // → resumeWalkRight → walkOut
     } else if (phase === 'walkOut') {
-      setX(x + dir * SPEED * dt);
-      drawFrame(SP.FRAME_INDEX.WALK[Math.floor(el / (1000 / WALK_FPS)) % 4]);
-      if (x < -PX || x > W()) { phase = 'gone'; window.juliet.gone(); return; }
+      setX(walkFrom + (SPEED * t) / 1000);
+      draw(clip.sheet, A.stepAt(clip, t).frame);
+      if (x > W()) { phase = 'gone'; window.juliet.gone(); return; }
     } else return;
     nextFrame(loop);
   }
@@ -155,5 +211,4 @@
 
   window.juliet.onShow(show);
   window.juliet.onLeave(leave);
-  drawFrame(SP.FRAME_INDEX.SIT);
 })();

@@ -1,6 +1,5 @@
 'use strict';
 const path = require('node:path');
-const fs = require('node:fs');
 const {
   app, BrowserWindow, Tray, Menu, nativeImage, screen, shell, ipcMain, powerMonitor, clipboard,
 } = require('electron');
@@ -12,7 +11,6 @@ const { createPresence } = require('./presence');
 
 const ASSETS = path.join(__dirname, '..', '..', 'assets');
 const PRELOAD = path.join(__dirname, '..', 'preload.js');
-const SHEET = path.join(ASSETS, 'juliet-sheet.png');
 const NUDGE_LINES = [
   'Fifteen minutes counts. Want me to open it?',
   'Future-you at the Ivy says thanks.',
@@ -115,11 +113,7 @@ function sendShow(payload) {
   const w = ensureOverlay();
   const send = () => {
     if (!overlay) return;
-    w.webContents.send('overlay:show', {
-      ...payload,
-      fromLeft: Math.random() < 0.5,
-      spriteSheetUrl: fs.existsSync(SHEET) ? 'file://' + SHEET : null,
-    });
+    w.webContents.send('overlay:show', payload);
   };
   if (w.webContents.isLoadingMainFrame()) w.webContents.once('did-finish-load', send);
   else send();

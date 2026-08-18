@@ -1,0 +1,125 @@
+{
+  "name": "juliet-turn-talk",
+  "image": "juliet-turn-talk-spritesheet.png",
+  "format": "RGBA8888",
+  "frameWidth": 128,
+  "frameHeight": 128,
+  "columns": 4,
+  "rows": 2,
+  "frameCount": 8,
+  "palette": [
+    "transparent",
+    "#1E1B1A",
+    "#686874",
+    "#A3A3AD",
+    "#F6F4EF",
+    "#EF8F9A",
+    "#E8C84B"
+  ],
+  "frames": {
+    "juliet-turn-talk-01.png": {
+      "frame": {
+        "x": 0,
+        "y": 0,
+        "w": 128,
+        "h": 128
+      },
+      "duration": 250,
+      "anchor": {
+        "x": 64,
+        "y": 120
+      }
+    },
+    "juliet-turn-talk-02.png": {
+      "frame": {
+        "x": 128,
+        "y": 0,
+        "w": 128,
+        "h": 128
+      },
+      "duration": 140,
+      "anchor": {
+        "x": 64,
+        "y": 120
+      }
+    },
+    "juliet-turn-talk-03.png": {
+      "frame": {
+        "x": 256,
+        "y": 0,
+        "w": 128,
+        "h": 128
+      },
+      "duration": 140,
+      "anchor": {
+        "x": 64,
+        "y": 120
+      }
+    },
+    "juliet-turn-talk-04.png": {
+      "frame": {
+        "x": 384,
+        "y": 0,
+        "w": 128,
+        "h": 128
+      },
+      "duration": 160,
+      "anchor": {
+        "x": 64,
+        "y": 120
+      }
+    },
+    "juliet-turn-talk-05.png": {
+      "frame": {
+        "x": 0,
+        "y": 128,
+        "w": 128,
+        "h": 128
+      },
+      "duration": 300,
+      "anchor": {
+        "x": 64,
+        "y": 120
+      }
+    },
+    "juliet-turn-talk-06.png": {
+      "frame": {
+        "x": 128,
+        "y": 128,
+        "w": 128,
+        "h": 128
+      },
+      "duration": 120,
+      "anchor": {
+        "x": 64,
+        "y": 120
+      }
+    },
+    "juliet-turn-talk-07.png": {
+      "frame": {
+        "x": 256,
+        "y": 128,
+        "w": 128,
+        "h": 128
+      },
+      "duration": 120,
+      "anchor": {
+        "x": 64,
+        "y": 120
+      }
+    },
+    "juliet-turn-talk-08.png": {
+      "frame": {
+        "x": 384,
+        "y": 128,
+        "w": 128,
+        "h": 128
+      },
+      "duration": 320,
+      "anchor": {
+        "x": 64,
+        "y": 120
+      }
+    }
+  }
+}
