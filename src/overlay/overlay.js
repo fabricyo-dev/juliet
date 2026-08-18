@@ -109,6 +109,7 @@
   // ---- speech bubble (code-rendered; text is whatever the runtime sends, "Hi!" by default) ----
   function fill(p) {
     savedBubble = null; clearTimeout(purrTimer);
+    if (p && p.theme) document.body.dataset.theme = p.theme === 'light' ? 'light' : 'dark';
     titleEl.textContent = (p && p.title) || A.DEFAULT_SPEECH;
     lineEl.textContent = (p && p.line) || '';
     buttonsEl.replaceChildren(...((p && p.buttons) || []).map((b) => {

@@ -1,7 +1,7 @@
 {
   "name": "juliet",
   "productName": "Juliet",
-  "version": "1.1.7",
+  "version": "1.2.0",
   "description": "A pixel cat that reminds Areej to keep up her extracurriculars and picks movie night.",
   "main": "src/main/main.js",
   "private": true,

@@ -36,6 +36,7 @@ const DEFAULT_SETTINGS = {
   phoneEnabled: false,     // ping her iPhone (via ntfy) when something is due while she's away from the Mac
   phoneTopic: null,        // generated the first time phone pings are switched on
   phoneServer: 'https://ntfy.sh',
+  theme: 'dark', // 'dark' | 'light' — Settings window + speech bubble
   launchAtLogin: true,
   presenceIdleSeconds: 300,
 };

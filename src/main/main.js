@@ -1,7 +1,7 @@
 'use strict';
 const path = require('node:path');
 const {
-  app, BrowserWindow, Tray, Menu, nativeImage, screen, shell, ipcMain, powerMonitor, clipboard,
+  app, BrowserWindow, Tray, Menu, nativeImage, nativeTheme, screen, shell, ipcMain, powerMonitor, clipboard,
 } = require('electron');
 const S = require('./scheduler');
 const L = require('./links');
@@ -40,6 +40,7 @@ app.whenReady().then(() => {
   store = createStore(path.join(app.getPath('userData'), 'state.json'), defaultState);
   store.state.activities = migrateActivities(store.state.activities, DEFAULT_ACTIVITIES);
   presence = createPresence(powerMonitor, store.state.settings.presenceIdleSeconds);
+  applyTheme();
   applyLoginItem();
   makeTray();
   setInterval(tick, S.TICK_MS);
@@ -115,6 +116,9 @@ function refreshTrayMenu() {
     { label: 'Quit Juliet', click: () => app.quit() },
   ]));
 }
+function applyTheme() {
+  nativeTheme.themeSource = store.state.settings.theme === 'light' ? 'light' : 'dark';
+}
 function applyLoginItem() {
   if (!app.isPackaged) return; // in dev this would register the bare Electron binary
   app.setLoginItemSettings({ openAtLogin: !!store.state.settings.launchAtLogin });
@@ -185,7 +189,7 @@ function sendShow(payload) {
   const w = ensureOverlay();
   const send = () => {
     if (!overlay) return;
-    w.webContents.send('overlay:show', payload);
+    w.webContents.send('overlay:show', { ...payload, theme: store.state.settings.theme === 'light' ? 'light' : 'dark' });
   };
   if (w.webContents.isLoadingMainFrame()) w.webContents.once('did-finish-load', send);
   else send();
@@ -523,6 +527,7 @@ ipcMain.handle('settings:save', (_e, patch) => {
     s.morningEnabled = !!s.morningEnabled;
     s.recapEnabled = !!s.recapEnabled;
     s.goodnightEnabled = !!s.goodnightEnabled;
+    s.theme = s.theme === 'light' ? 'light' : 'dark';
     s.recapDay = Math.max(0, Math.min(6, parseInt(s.recapDay, 10) || 0));
     if (!/^\d{2}:\d{2}$/.test(s.recapTime)) s.recapTime = st.settings.recapTime;
     const recapChanged = s.recapDay !== st.settings.recapDay || s.recapTime !== st.settings.recapTime
@@ -536,6 +541,7 @@ ipcMain.handle('settings:save', (_e, patch) => {
     if (movieChanged) st.schedule.movieNextAt = null; // recompute
     if (recapChanged) st.schedule.recapNextAt = null;
     applyLoginItem();
+    applyTheme();
     refreshTrayMenu();
   }
   if (Array.isArray(patch.activities)) st.activities = mergeActivities(st.activities, patch.activities, Date.now());

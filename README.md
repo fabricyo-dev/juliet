@@ -18,7 +18,7 @@ Dev shortcuts: `JULIET_DEMO=nudge|gentle|movie|recap|pep|checkin|morning|stroll|
 npm run dist
 ```
 
-Produces `dist/Juliet-1.1.7-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Silicon). The app is **unsigned** (no Apple developer account).
+Produces `dist/Juliet-1.2.0-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Silicon). The app is **unsigned** (no Apple developer account).
 
 **First open on Areej's Mac:** open the `.dmg`, drag Juliet to Applications, then **right-click → Open → Open**. If macOS still refuses: System Settings → Privacy & Security → scroll down → **Open Anyway**. After that she launches at login on her own — look for the little cat in the menu bar.
 
@@ -44,6 +44,7 @@ Produces `dist/Juliet-1.1.7-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Si
 - **Cameo walks** (default 2/week): she just strolls across the screen, no bubble.
 - **Goodnight** (off by default, Settings → Schedule): once per night, ~90 min after active hours end, if she's still at the Mac: "It's late. Sleep is a study strategy too."
 - **iPhone pings** (off by default, Settings → iPhone): install the free ntfy app, subscribe to the private topic Juliet shows you, send a test. From then on anything due while she's *away* from the Mac (locked, idle, elsewhere) goes to her iPhone instead — nudges (tap opens the link), pep talks, movie night (tap opens Netflix search), the recap. At the Mac the cat still handles it; never both. Goodnight stays Mac-only. This is the app's only network use.
+- **Dark mode** is the default (Settings window and speech bubble); Settings → Schedule → untick *Dark mode* for the light look.
 - Juliet appears on the display your mouse is on.
 
 ## Art & animation

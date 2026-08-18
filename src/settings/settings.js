@@ -117,6 +117,8 @@
     $('recapTime').value = s.recapTime;
     $('goodnightEnabled').checked = !!s.goodnightEnabled;
     $('launchAtLogin').checked = !!s.launchAtLogin;
+    $('darkMode').checked = s.theme !== 'light';
+    document.body.dataset.theme = s.theme === 'light' ? 'light' : 'dark';
 
     renderRate(); renderPhone();
 
@@ -142,6 +144,7 @@
     $('callStatus').textContent = sent ? 'On her way.' : "She's already out — look at the bottom of your screen.";
     setTimeout(() => { $('callStatus').textContent = ''; }, 6000);
   };
+  $('darkMode').onchange = () => save({ settings: { theme: $('darkMode').checked ? 'dark' : 'light' } });
   $('saveSchedule').onclick = () => save({
     settings: {
       nudgesPerDay: $('nudgesPerDay').value,
