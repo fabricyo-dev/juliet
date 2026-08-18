@@ -54,5 +54,3 @@ ul#seen button { margin-left: 8px; font-size: 11px; padding: 1px 6px; box-shadow
 #rateLabel { min-height: 2.6em; margin: 6px 0 10px; font-size: 15px; font-weight: 600; }
 #rateSlider { width: 100%; accent-color: #f29bb0; }
 .scale { display: flex; justify-content: space-between; color: #5a5a66; font-size: 11px; }
-ul#rateHistory { padding-left: 18px; margin: 0; }
-ul#rateHistory li { margin: 2px 0; }

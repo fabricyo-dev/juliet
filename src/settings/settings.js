@@ -19,21 +19,11 @@
     $('rateValue').textContent = String(v);
     $('rateLabel').textContent = ((state && state.ratingLabels) || [])[v - 1] || '';
   }
-  function renderRateHistory() {
-    const rs = state.ratings || [];
-    $('rateCount').textContent = rs.length ? `(${rs.length})` : '';
-    $('rateHistory').replaceChildren(...rs.slice(-8).reverse().map((r) => {
-      const li = document.createElement('li');
-      const d = new Date(r.at);
-      li.textContent = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} — ${r.value}/10, "${(state.ratingLabels || [])[r.value - 1] || ''}"`;
-      return li;
-    }));
-  }
   $('rateSlider').oninput = () => { renderRate(); $('rateStatus').textContent = ''; };
   $('sendRating').onclick = async () => {
     const res = await window.juliet.rate($('rateSlider').value);
     lastSummary = res.summary || '';
-    state = res; renderRateHistory();
+    state = res;
     $('rateStatus').textContent = res.reacted ? 'Sent. Juliet is on her way.' : 'Saved. Juliet is busy right now; she will react as soon as she is free.';
     $('copyRating').disabled = !lastSummary;
   };
@@ -95,7 +85,7 @@
     $('goodnightEnabled').checked = !!s.goodnightEnabled;
     $('launchAtLogin').checked = !!s.launchAtLogin;
 
-    renderRate(); renderRateHistory();
+    renderRate();
 
     const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
     const n = (state.history || []).filter((h) => (!h.outcome || h.outcome === 'done') && h.at >= monthStart.getTime()).length;
