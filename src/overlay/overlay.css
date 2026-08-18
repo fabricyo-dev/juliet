@@ -38,3 +38,5 @@ html, body {
 }
 #buttons button:hover { background: #f29bb0; }
 #buttons button:active { transform: translate(2px, 2px); box-shadow: none; }
+#buttons button:disabled { opacity: .45; box-shadow: none; transform: translate(2px, 2px); cursor: default; }
+#buttons button:disabled:hover { background: #fff; }

@@ -144,3 +144,16 @@ test('markDone appends to history', () => {
   S.markDone(st, 'cs50', at(2026, 8, 18, 10));
   assert.deepEqual(st.history, [{ activityId: 'cs50', at: at(2026, 8, 18, 10) }]);
 });
+
+test('replanToday: fresh plan for today, past slots pre-consumed, no immediate fire', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.settings.nudgesPerDay = 6;
+  const now = at(2026, 8, 18, 15, 30);
+  S.replanToday(st, now, Math.random);
+  assert.equal(st.schedule.planDate, '2026-08-18');
+  assert.equal(st.schedule.slots.length, 6);
+  for (const t of st.schedule.slots) if (t <= now) assert.ok(st.schedule.fired.includes(t));
+  assert.equal(S.tick(st, now, true, seq(0.5)), null); // nothing pending right after a save
+  const future = st.schedule.slots.filter((t) => t > now);
+  if (future.length) assert.equal(S.tick(st, future[0] + 1000, true, seq(0.5)).kind, 'nudge');
+});

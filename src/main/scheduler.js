@@ -118,6 +118,15 @@ function tick(state, now, present, rng = Math.random) {
   return null;
 }
 
+// Settings changed mid-day: draw a fresh plan for today but treat everything already in the past as
+// consumed, so the new plan only governs the rest of the day (no burst of catch-up nudges).
+function replanToday(state, now, rng = Math.random) {
+  const sch = state.schedule;
+  sch.planDate = dayKey(now);
+  sch.slots = planDay(state.settings, now, rng);
+  sch.fired = sch.slots.filter((t) => t <= now);
+}
+
 function snooze(state, activityId, now) {
   state.schedule.snoozed = [...(state.schedule.snoozed || []), { activityId, at: now + SNOOZE_MS }];
 }
@@ -127,5 +136,5 @@ function markDone(state, activityId, now) {
 
 module.exports = {
   MIN, SNOOZE_MS, SNOOZE_STALE_MS, MOVIE_HOLD_MS, TICK_MS,
-  parseHM, dayKey, activeWindow, planDay, movieDueAt, chooseActivity, tick, snooze, markDone,
+  parseHM, dayKey, activeWindow, planDay, movieDueAt, chooseActivity, tick, replanToday, snooze, markDone,
 };

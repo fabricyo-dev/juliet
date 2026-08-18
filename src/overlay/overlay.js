@@ -9,6 +9,7 @@
   const TIMEOUT_MS = 90_000;                            // ignored bubble → she leaves
   const EDGE = 200;                                     // px from a screen edge where the bubble edge-anchors
   const HOP_MS = 1200;                                  // "Did it" bounce (2 × 0.6 s CSS keyframes)
+  const ACTED_WATCHDOG_MS = 8000;                       // max wait for main's overlay:leave after an action
 
   const hit = document.getElementById('hit');
   const canvas = document.getElementById('cat');
@@ -48,13 +49,15 @@
 
   // ---- sprite sheets ----
   const sheets = {};
+  let sheetError = false;
   for (const [key, def] of Object.entries(A.SHEETS)) {
     const img = new Image();
-    img.onerror = () => console.error('failed to load sheet', def.image);
+    img.onerror = () => { sheetError = true; console.error('failed to load sheet', def.image); };
     img.src = ASSET_BASE + def.image;
     sheets[key] = img;
   }
   const sheetsReady = () => Object.values(sheets).every((i) => i.complete && i.naturalWidth > 0);
+  const SHOW_MAX_TRIES = 50; // × 100 ms: give up on a broken/missing sheet instead of holding the overlay forever
 
   function draw(sheetKey, frame) {
     ctx.imageSmoothingEnabled = false;
@@ -124,14 +127,23 @@
   }
 
   // ---- entry points from main ----
-  function show(p) {
+  function show(p, tries = 0) {
     if (phase !== 'idle' && phase !== 'gone') {
-      // already on screen (e.g. movie re-roll): update the bubble in place and keep talking
+      // already on screen (e.g. movie re-roll, "couldn't open" notice): update the bubble in place and keep talking
       fill(p);
       if (phase === 'talk' || phase === 'acted') { phase = 'talk'; bubble.hidden = false; armTimeout(); }
       return;
     }
-    if (W() < 200 || !sheetsReady()) { setTimeout(() => show(p), 100); return; } // viewport / sheets not ready yet
+    if (W() < 200 || !sheetsReady()) { // viewport / sheets not ready yet
+      if (sheetError || tries >= SHOW_MAX_TRIES) {
+        console.error('juliet: sprite sheets unavailable — standing down so the app stays schedulable');
+        phase = 'gone';
+        window.juliet.gone();
+        return;
+      }
+      setTimeout(() => show(p, tries + 1), 100);
+      return;
+    }
     fill(p);
     bubble.hidden = true;
     pendingLeave = null;
@@ -149,8 +161,11 @@
   function act(id) {
     if (phase !== 'talk') return;
     clearTimeout(timeoutId);
-    bubble.hidden = true;
+    // The bubble stays up (talkToUser keeps looping "while a message is visible"); grey the buttons for feedback.
+    buttonsEl.querySelectorAll('button').forEach((b) => { b.disabled = true; });
     phase = 'acted';
+    // Watchdog: if main never answers (crash mid-handler), don't sit here forever — leave on our own.
+    timeoutId = setTimeout(() => leave({ hop: false }), ACTED_WATCHDOG_MS);
     window.juliet.action(id);
   }
   function leave(p) {
@@ -158,7 +173,6 @@
     if (phase === 'walkIn' || phase === 'turnIn') { pendingLeave = { hop }; return; } // finish arriving first
     if (phase !== 'talk' && phase !== 'acted') return;
     clearTimeout(timeoutId);
-    bubble.hidden = true;
     if (hop) {
       phase = 'hop';
       canvas.classList.add('hop');
@@ -166,6 +180,8 @@
     } else turnBack();
   }
   function turnBack() {
+    bubble.hidden = true;            // speech ends exactly when she stops talking to the user
+    window.juliet.setHit(false);     // release mouse capture; the rest of the walk is click-through
     phase = 'turnBack';
     startClip('turnBackRight', performance.now());
   }
@@ -205,7 +221,8 @@
     nextFrame(loop);
   }
 
-  hit.addEventListener('pointerenter', () => window.juliet.setHit(true));
+  // Only capture the mouse while she is talking (bubble + buttons live); walking is always click-through.
+  hit.addEventListener('pointerenter', () => { if (phase === 'talk' || phase === 'acted' || phase === 'hop') window.juliet.setHit(true); });
   hit.addEventListener('pointerleave', () => window.juliet.setHit(false));
   canvas.addEventListener('click', () => act('cat'));
 

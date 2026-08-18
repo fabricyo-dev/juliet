@@ -20,6 +20,8 @@ const NUDGE_LINES = [
 
 let store, presence, tray;
 let overlay = null; // BrowserWindow while Juliet is on screen
+let overlayWatchdog = null;
+const OVERLAY_MAX_MS = 4 * 60 * 1000;
 let settingsWin = null;
 let current = null; // {kind:'nudge', activity} | {kind:'movie', movie} | {kind:'nomovie'}
 
@@ -101,12 +103,13 @@ function ensureOverlay() {
   overlay.setIgnoreMouseEvents(true, { forward: true });
   overlay.loadFile(path.join(__dirname, '..', 'overlay', 'overlay.html'));
   overlay.once('ready-to-show', () => { if (overlay) overlay.showInactive(); });
-  overlay.on('closed', () => { overlay = null; current = null; });
-  overlay.webContents.on('render-process-gone', () => {
-    console.error('overlay renderer gone');
-    try { overlay.destroy(); } catch { /* already gone */ }
-    overlay = null; current = null;
-  });
+  overlay.on('closed', () => { clearTimeout(overlayWatchdog); overlay = null; current = null; });
+  overlay.webContents.on('render-process-gone', () => { console.error('overlay renderer gone'); dismissOverlay(); });
+  overlay.webContents.on('did-fail-load', (_e, code, desc) => { console.error('overlay failed to load', code, desc); dismissOverlay(); });
+  // Safety net: no appearance legitimately outlives walk-in + 90 s bubble + walk-out. If the renderer ever
+  // stalls, tear the window down so nudges keep flowing instead of being suppressed by `if (overlay)`.
+  clearTimeout(overlayWatchdog);
+  overlayWatchdog = setTimeout(() => { console.error('overlay watchdog fired'); dismissOverlay(); }, OVERLAY_MAX_MS);
   return overlay;
 }
 function sendShow(payload) {
@@ -122,6 +125,7 @@ function leave(hop) {
   if (overlay) overlay.webContents.send('overlay:leave', { hop: !!hop });
 }
 function dismissOverlay() {
+  clearTimeout(overlayWatchdog);
   if (overlay) { try { overlay.destroy(); } catch { /* ignore */ } }
   overlay = null; current = null;
 }
@@ -181,28 +185,47 @@ async function openAll(urls) {
 
 ipcMain.on('overlay:hit', (_e, v) => { if (overlay) overlay.setIgnoreMouseEvents(!v, { forward: true }); });
 ipcMain.on('overlay:gone', () => dismissOverlay());
+// Bubble shown when the browser could not be opened (the URLs are already on the clipboard).
+function couldNotOpenPayload(kind, title) {
+  return {
+    kind, title,
+    line: "I couldn't open that — I copied the link to your clipboard instead.",
+    buttons: [{ id: 'ack', label: 'OK' }],
+  };
+}
+
 ipcMain.on('overlay:action', async (_e, id) => {
-  if (!current) { leave(false); return; }
-  const now = Date.now();
-  if (current.kind === 'nudge') {
-    const a = current.activity;
-    if (id === 'open' || id === 'cat') { await openAll([a.url]); leave(false); }
-    else if (id === 'later') { S.snooze(store.state, a.id, now); store.save(); leave(false); }
-    else if (id === 'done') { S.markDone(store.state, a.id, now); store.save(); leave(true); }
-    else leave(false); // timeout
-  } else if (current.kind === 'movie') {
-    const title = current.movie;
-    if (id === 'open' || id === 'cat') { await openAll(L.movieLinks(title)); leave(true); }
-    else if (id === 'different') {
-      const r = L.rerollMovie(store.state.movies, title);
-      if (r) { store.state.movies = r.movies; store.save(); current.movie = r.title; sendShow(moviePayload(r.title)); }
-      else leave(false);
-    } else { // skip / timeout: she didn't watch it — put it back
-      store.state.movies = L.unpickMovie(store.state.movies, title); store.save(); leave(false);
+  try {
+    if (!current) { leave(false); return; }
+    const now = Date.now();
+    if (current.kind === 'nudge') {
+      const a = current.activity;
+      if (id === 'open' || id === 'cat') {
+        if (await openAll([a.url])) leave(false);
+        else sendShow(couldNotOpenPayload('nudge', `Areej — ${a.name}`));
+      } else if (id === 'later') { S.snooze(store.state, a.id, now); store.save(); leave(false); }
+      else if (id === 'done') { S.markDone(store.state, a.id, now); store.save(); leave(true); }
+      else leave(false); // ack / timeout
+    } else if (current.kind === 'movie') {
+      const title = current.movie;
+      if (id === 'open' || id === 'cat') {
+        if (await openAll(L.movieLinks(title))) leave(true);
+        else sendShow(couldNotOpenPayload('movie', `Movie night, Areej: ${title}`));
+      } else if (id === 'different') {
+        const r = L.rerollMovie(store.state.movies, title);
+        if (r) { store.state.movies = r.movies; store.save(); current.movie = r.title; sendShow(moviePayload(r.title)); }
+        else leave(false);
+      } else { // skip / ack / timeout: she didn't watch it — put it back
+        store.state.movies = L.unpickMovie(store.state.movies, title); store.save(); leave(false);
+      }
+    } else { // nomovie
+      if (id === 'settings') openSettings();
+      leave(false);
     }
-  } else { // nomovie
-    if (id === 'settings') openSettings();
-    leave(false);
+  } catch (e) {
+    // Never leave the overlay stranded: a stranded window suppresses every future nudge.
+    console.error('overlay:action failed', e);
+    dismissOverlay();
   }
 });
 
@@ -216,6 +239,11 @@ function openSettings() {
   settingsWin.loadFile(path.join(__dirname, '..', 'settings', 'settings.html'));
   settingsWin.once('ready-to-show', () => { settingsWin.show(); if (app.dock) app.dock.show(); });
   settingsWin.on('closed', () => { settingsWin = null; if (app.dock) app.dock.hide(); });
+}
+
+// "leetcode.com" → "https://leetcode.com"; anything with a scheme is left alone.
+function normalizeUrl(u) {
+  return /^[a-z][a-z0-9+.-]*:/i.test(u) ? u : `https://${u}`;
 }
 
 ipcMain.handle('settings:get', () => ({ ...store.state, recovered: store.recovered, placeholders: PLACEHOLDER_MOVIES }));
@@ -233,7 +261,7 @@ ipcMain.handle('settings:save', (_e, patch) => {
     const planChanged = s.nudgesPerDay !== st.settings.nudgesPerDay || s.activeStart !== st.settings.activeStart || s.activeEnd !== st.settings.activeEnd;
     const movieChanged = s.movieDay !== st.settings.movieDay || s.movieTime !== st.settings.movieTime;
     st.settings = s;
-    if (planChanged) st.schedule.planDate = null; // re-plan today on next tick
+    if (planChanged) S.replanToday(st, Date.now()); // new plan governs only the rest of today
     if (movieChanged) st.schedule.movieNextAt = null; // recompute
     applyLoginItem();
     refreshTrayMenu();
@@ -244,7 +272,7 @@ ipcMain.handle('settings:save', (_e, patch) => {
       .map((a, i) => ({
         id: a.id || `custom-${Date.now()}-${i}`,
         name: String(a.name).trim(),
-        url: String(a.url).trim(),
+        url: normalizeUrl(String(a.url).trim()),
         enabled: a.enabled !== false,
       }));
   }
