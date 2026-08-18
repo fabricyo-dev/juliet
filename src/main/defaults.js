@@ -40,9 +40,14 @@ const DEFAULT_SETTINGS = {
   presenceIdleSeconds: 300,
 };
 
-// What Juliet says when she shows up just to cheer Areej on (no task attached). Mirza's line first.
+// What Juliet says when she shows up just to cheer Areej on (no task attached).
+// The first PEP_MIRZA_COUNT lines are Mirza's own words — she says one of those most of the time.
 const PEP_LINES = [
   "Stop overthinking — you've got this. You are the smartest, most talented, well-spoken person I know.",
+  "You've got this. You're literally the smarter, prettier version of Tate McRae.",
+  "People write poems about you. Stop second-guessing yourself.",
+  "Well-spoken like Mamdani, pretty like Tate McRae.",
+  "AI could never replace a diva like you. Not even in coding.",
   "You are the smartest, most talented, well-spoken person in any room. Stop overthinking and go.",
   "Quick reminder from your cat: you've got this. Smartest, most talented, best-spoken — that's you.",
   "Overthinking is just talent with nowhere to go. Point it at one thing and start.",
@@ -51,6 +56,7 @@ const PEP_LINES = [
   "The version of you that's worried and the version that's brilliant are the same person. Send the brilliant one.",
   "Deep breath. Smartest person you know is reading this.",
 ];
+const PEP_MIRZA_COUNT = 5;
 
 const MORNING_LINES = [
   'Coffee first. Then one small thing.',
@@ -77,4 +83,4 @@ function defaultState() {
   };
 }
 
-module.exports = { DEFAULT_ACTIVITIES, DEFAULT_SETTINGS, PLACEHOLDER_MOVIES, PEP_LINES, MORNING_LINES, defaultState };
+module.exports = { DEFAULT_ACTIVITIES, DEFAULT_SETTINGS, PLACEHOLDER_MOVIES, PEP_LINES, PEP_MIRZA_COUNT, MORNING_LINES, defaultState };

@@ -6,7 +6,7 @@ const {
 const S = require('./scheduler');
 const L = require('./links');
 const { createStore } = require('./store');
-const { defaultState, PLACEHOLDER_MOVIES, PEP_LINES, MORNING_LINES, DEFAULT_ACTIVITIES } = require('./defaults');
+const { defaultState, PLACEHOLDER_MOVIES, PEP_LINES, PEP_MIRZA_COUNT, MORNING_LINES, DEFAULT_ACTIVITIES } = require('./defaults');
 const { createPresence } = require('./presence');
 const R = require('./rating');
 const PH = require('./phone');
@@ -318,14 +318,18 @@ function fireFollowup(title) {
     buttons: [{ id: 'loved', label: 'Loved it' }, { id: 'meh', label: 'Meh' }, { id: 'didnt', label: "Didn't watch" }],
   });
 }
+// Mirza's own lines two times out of three; the rest of the time anything from the list.
+function pickPepLine() {
+  const pool = Math.random() < 0.67 ? PEP_LINES.slice(0, PEP_MIRZA_COUNT) : PEP_LINES;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
 function firePep() {
   if (overlay) return;
   current = { kind: 'pep' };
   sendShow({
     kind: 'pep',
     title: 'Hey Areej.',
-    // the first line is the one Mirza wrote — say it most often, vary the rest of the time
-    line: Math.random() < 0.5 ? PEP_LINES[0] : PEP_LINES[Math.floor(Math.random() * PEP_LINES.length)],
+    line: pickPepLine(),
     buttons: [{ id: 'ack', label: 'Thanks, Juliet' }],
   });
 }
@@ -345,7 +349,7 @@ async function pushToPhone(fire) {
     st.movies = r.movies; S.noteMovieOpened(st, r.title, Date.now()); store.save();
     msg = PH.buildPhoneMessage({ kind: 'movie', title: r.title });
   } else if (fire.kind === 'pep') {
-    msg = PH.buildPhoneMessage({ kind: 'pep', line: Math.random() < 0.5 ? PEP_LINES[0] : PEP_LINES[Math.floor(Math.random() * PEP_LINES.length)] });
+    msg = PH.buildPhoneMessage({ kind: 'pep', line: pickPepLine() });
   } else if (fire.kind === 'recap') {
     msg = PH.buildPhoneMessage({ kind: 'recap', line: S.recapSummary(st.history, Date.now()).line });
   } else return;
