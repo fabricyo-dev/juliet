@@ -7,7 +7,12 @@
 </head>
 <body>
 <header>
-  <h1>Juliet</h1>
+  <div class="titlebar">
+    <h1>Juliet</h1>
+    <span class="spacer"></span>
+    <span id="callStatus" class="hint"></span>
+    <button id="callJuliet" class="primary call">Call Juliet</button>
+  </div>
   <p id="notice" hidden></p>
   <nav>
     <button data-tab="activities" class="on">Activities</button>
@@ -69,7 +74,6 @@
     <p class="hint">Juliet only shows up while you're actually at the Mac (awake, unlocked, recently active). Missed slots are dropped, not stacked. Need a break? Menu-bar cat → Quiet… (2 hours or the rest of today).</p>
     <p id="stats" class="hint"></p>
     <div class="row">
-      <button id="testNudge" class="ghost">Send Juliet now</button>
       <span class="spacer"></span>
       <button id="saveSchedule" class="primary">Save</button>
     </div>

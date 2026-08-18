@@ -25,7 +25,7 @@ Produces `dist/Juliet-1.0.0-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Si
 ## Where things live
 
 - State: `~/Library/Application Support/Juliet/state.json` (activities, watch-list, schedule, history). Delete it to reset.
-- Settings: click the menu-bar cat → **Settings…** (Activities / Movies / Schedule / Rate, plus "Send Juliet now" and "Pick a movie now").
+- **Opening the app** (double-click Juliet in Applications, or the menu-bar cat → Settings…) shows the Settings window: Activities / Movies / Schedule / Rate, with a big **Call Juliet** button at the top that summons her right now. The automatic launch at login stays silent in the menu bar. She also shows up on her own (see below).
 
 ## Rules of the cat
 

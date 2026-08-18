@@ -28,8 +28,13 @@ let current = null; // {kind:'nudge', activity} | {kind:'movie', movie} | {kind:
 
 app.setName('Juliet');
 if (!app.requestSingleInstanceLock()) app.quit();
+// She's already running and Areej double-clicked the app again: that's "show me the app" → Settings.
+let readyAt = 0;
+app.on('second-instance', () => { if (app.isReady()) openSettings(); });
+app.on('activate', () => { if (app.isReady() && Date.now() - readyAt > 3000) openSettings(); }); // ignore the launch-time activation
 
 app.whenReady().then(() => {
+  readyAt = Date.now();
   if (app.dock) app.dock.hide();
   store = createStore(path.join(app.getPath('userData'), 'state.json'), defaultState);
   store.state.activities = migrateActivities(store.state.activities, DEFAULT_ACTIVITIES);
@@ -40,7 +45,11 @@ app.whenReady().then(() => {
   powerMonitor.on('resume', () => setTimeout(tick, 5000));
   powerMonitor.on('unlock-screen', () => setTimeout(tick, 5000));
   tick();
+  // A deliberate launch (double-click) opens Settings; the automatic launch at login stays out of the way.
+  let openedAtLogin = false;
+  try { openedAtLogin = !!app.getLoginItemSettings().wasOpenedAtLogin; } catch { /* not available */ }
   const demo = process.env.JULIET_DEMO;
+  if (!openedAtLogin && !demo) setTimeout(() => openSettings(), 400);
   if (demo === 'nudge') setTimeout(() => fireNudge(), 1500);
   if (demo === 'movie') setTimeout(() => fireMovie(), 1500);
   if (demo === 'recap') setTimeout(() => fireRecap(), 1500);
@@ -176,7 +185,7 @@ function dismissOverlay() {
 }
 
 function fireNudge(activityId, forceGentle = false, from = 'manual') {
-  if (overlay) return;
+  if (overlay) return false;
   const gentle = forceGentle || S.needsGentleReturn(store.state, Date.now());
   // A snoozed activity is one she explicitly deferred — keep it. A slot-picked one can be swapped for an easy one.
   const useId = activityId && !(gentle && from === 'slot');
@@ -185,7 +194,7 @@ function fireNudge(activityId, forceGentle = false, from = 'manual') {
     : gentle
       ? S.chooseEasyActivity(store.state.activities, store.state.schedule.recent)
       : S.chooseActivity(store.state.activities, store.state.schedule.recent);
-  if (!a) return;
+  if (!a) return false;
   current = { kind: 'nudge', activity: a };
   sendShow({
     kind: 'nudge',
@@ -195,6 +204,7 @@ function fireNudge(activityId, forceGentle = false, from = 'manual') {
       : NUDGE_LINES[Math.floor(Math.random() * NUDGE_LINES.length)],
     buttons: [{ id: 'open', label: gentle ? 'Open it' : 'Open' }, { id: 'later', label: 'Later' }, { id: 'done', label: 'Did it' }],
   });
+  return true;
 }
 function moviePayload(title) {
   return {
@@ -422,7 +432,7 @@ ipcMain.handle('settings:save', (_e, patch) => {
   tick();
   return publicState();
 });
-ipcMain.handle('settings:testNudge', () => { fireNudge(); return true; });
+ipcMain.handle('settings:testNudge', () => fireNudge()); // false = she's already on screen
 ipcMain.handle('settings:testMovie', () => { fireMovie(); return true; });
 ipcMain.handle('settings:restoreDefaults', () => {
   store.state.activities = DEFAULT_ACTIVITIES.map((a) => ({ ...a }));

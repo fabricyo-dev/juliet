@@ -4,7 +4,9 @@ body {
   color: #2b2b33; background: #fffaf3; -webkit-user-select: none; user-select: none;
 }
 header { padding: 14px 18px 0; border-bottom: 2px solid #2b2b33; }
-h1 { margin: 0 0 6px; font-size: 18px; letter-spacing: .02em; }
+h1 { margin: 0; font-size: 18px; letter-spacing: .02em; }
+.titlebar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+button.call { font-weight: 700; padding: 8px 14px; }
 h3 { margin: 18px 0 6px; font-size: 13px; }
 h3 small { color: #5a5a66; font-weight: 400; }
 nav { display: flex; gap: 4px; }

@@ -109,7 +109,11 @@
   $('saveMovies').onclick = () => save({ moviesText: $('movies').value });
   $('clearSeen').onclick = () => save({ clearSeen: true });
   $('testMovie').onclick = () => window.juliet.testMovie();
-  $('testNudge').onclick = () => window.juliet.testNudge();
+  $('callJuliet').onclick = async () => {
+    const sent = await window.juliet.testNudge();
+    $('callStatus').textContent = sent ? 'On her way.' : "She's already out — look at the bottom of your screen.";
+    setTimeout(() => { $('callStatus').textContent = ''; }, 6000);
+  };
   $('saveSchedule').onclick = () => save({
     settings: {
       nudgesPerDay: $('nudgesPerDay').value,
