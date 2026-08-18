@@ -48,6 +48,12 @@ const PEP_LINES = [
   "People write poems about you. Stop second-guessing yourself.",
   "Well-spoken like Mamdani, pretty like Tate McRae.",
   "AI could never replace a diva like you. Not even in coding.",
+  "You deserve to go shopping every day.",
+  "If coffee and a library full of cats were a person, they'd be you.",
+  "Let me know if you ever need to open a door with a key.",
+  "Don't forget to switch off the lights in the electric car room.",
+  "You've got this, bonita.",
+  "Don't drop your jewellery — it's hard to find. And even though it shines, it doesn't shine as bright as you.",
   "You are the smartest, most talented, well-spoken person in any room. Stop overthinking and go.",
   "Quick reminder from your cat: you've got this. Smartest, most talented, best-spoken — that's you.",
   "Overthinking is just talent with nowhere to go. Point it at one thing and start.",
@@ -56,7 +62,7 @@ const PEP_LINES = [
   "The version of you that's worried and the version that's brilliant are the same person. Send the brilliant one.",
   "Deep breath. Smartest person you know is reading this.",
 ];
-const PEP_MIRZA_COUNT = 5;
+const PEP_MIRZA_COUNT = 11;
 
 const MORNING_LINES = [
   'Coffee first. Then one small thing.',
