@@ -19,6 +19,15 @@ const DEFAULT_ACTIVITIES = [
   { id: 'ocw1806', name: 'MIT OCW 18.06 Linear Algebra — one lecture', url: 'https://ocw.mit.edu/courses/18-06-linear-algebra-spring-2010/' },
   { id: '3b1b', easy: true, name: '3Blue1Brown — one video', url: 'https://www.3blue1brown.com/' },
   { id: 'cs50', name: 'CS50x — next lecture / problem set', url: 'https://cs50.harvard.edu/x/' },
+  // math (she wants to major in it too): contests are the currency, proofs are the craft
+  { id: 'amc', name: 'AMC 10/12 — one past-paper section (AoPS archive)', url: 'https://artofproblemsolving.com/wiki/index.php/AMC_Problems_and_Solutions' },
+  { id: 'aops', easy: true, name: 'AoPS Alcumus — one session', url: 'https://artofproblemsolving.com/alcumus' },
+  { id: 'proof', name: 'Write up one proof cleanly (Cummings / Velleman)', url: 'https://longformmath.com/proofs-book' },
+  { id: 'euclid', name: 'Waterloo Euclid / CEMC — one past contest', url: 'https://www.cemc.uwaterloo.ca/contests/past_contests.html' },
+  { id: 'hmmt', name: 'HMMT / PUMaC archive — one problem set', url: 'https://www.hmmt.org/www/archive/problems' },
+  { id: 'euler', easy: true, name: 'Project Euler — one problem', url: 'https://projecteuler.net/archives' },
+  { id: 'mathclub', name: 'Math club / circle — plan one session (SLO)', url: 'https://mail.google.com/' },
+  { id: 'promys', easy: true, name: 'Summer math (PROMYS / Ross / SUMaC) — check dates, start the application', url: 'https://promys.org/' },
   // lead & teach
   { id: 'slo', name: 'SLO — plan this week\'s session, write down the goal', url: 'https://mail.google.com/' },
   { id: 'tutor', name: 'Peer tutoring — one session, log the hours', url: 'https://www.khanacademy.org/computing' },
