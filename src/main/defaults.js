@@ -90,6 +90,7 @@ const PEP_LINES = [
   "If a Lana song were a person, she'd look like you.",
   "Go get 'em, men beater.",
   "If you can't throw a punch, you can learn how to spit.",
+  "If overnight I up and end it, run away without a mention, go ghost like you the most.",
   "You are the smartest, most talented, well-spoken person in any room. Stop overthinking and go.",
   "Quick reminder from your cat: you've got this. Smartest, most talented, best-spoken — that's you.",
   "Overthinking is just talent with nowhere to go. Point it at one thing and start.",
@@ -98,7 +99,7 @@ const PEP_LINES = [
   "The version of you that's worried and the version that's brilliant are the same person. Send the brilliant one.",
   "Deep breath. Smartest person you know is reading this.",
 ];
-const PEP_MIRZA_COUNT = 26;
+const PEP_MIRZA_COUNT = 27;
 // onlyMirza → one of his lines; otherwise his lines two times out of three, anything the rest of the time.
 function pickPepLine(onlyMirza = false, rng = Math.random) {
   const mirza = PEP_LINES.slice(0, PEP_MIRZA_COUNT);

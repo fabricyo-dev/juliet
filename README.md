@@ -18,7 +18,7 @@ Dev shortcuts: `JULIET_DEMO=nudge|gentle|movie|recap|pep|checkin|morning|stroll|
 npm run dist
 ```
 
-Produces `dist/Juliet-1.2.3-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Silicon). The app is **unsigned** (no Apple developer account).
+Produces `dist/Juliet-1.2.4-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Silicon). The app is **unsigned** (no Apple developer account).
 
 **First open on Areej's Mac:** open the `.dmg`, drag Juliet to Applications, then **right-click → Open → Open**. If macOS still refuses: System Settings → Privacy & Security → scroll down → **Open Anyway**. After that she launches at login on her own — look for the little cat in the menu bar.
 
