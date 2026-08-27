@@ -90,7 +90,7 @@ const PEP_LINES = [
   "If a Lana song were a person, she'd look like you.",
   "Go get 'em, men beater.",
   "If you can't throw a punch, you can learn how to spit.",
-  "If overnight I up and end it, run away without a mention, go ghost — wonder what comes next.",
+  "If overnight I up and end it, run away without a mention, go ghost (wonder what comes next).",
   "You deserve a bouquet of tulips with books in between the flowers.",
   "I hope our names are next to each other on a watchlist.",
   "Don't worry, king — you're the best at violin in my eyes.",
