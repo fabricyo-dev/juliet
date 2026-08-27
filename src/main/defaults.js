@@ -87,6 +87,9 @@ const PEP_LINES = [
   "You're like Barbie — you can do anything.",
   "At least you're not a man. (I can't believe I wrote that.)",
   "Don't give up on men — at the end of the day, I'm one. Huh? What? Meow. I'm Juliet.",
+  "If a Lana song were a person, she'd look like you.",
+  "Go get 'em, men beater.",
+  "If you can't throw a punch, you can learn how to spit.",
   "You are the smartest, most talented, well-spoken person in any room. Stop overthinking and go.",
   "Quick reminder from your cat: you've got this. Smartest, most talented, best-spoken — that's you.",
   "Overthinking is just talent with nowhere to go. Point it at one thing and start.",
@@ -95,7 +98,7 @@ const PEP_LINES = [
   "The version of you that's worried and the version that's brilliant are the same person. Send the brilliant one.",
   "Deep breath. Smartest person you know is reading this.",
 ];
-const PEP_MIRZA_COUNT = 23;
+const PEP_MIRZA_COUNT = 26;
 // onlyMirza → one of his lines; otherwise his lines two times out of three, anything the rest of the time.
 function pickPepLine(onlyMirza = false, rng = Math.random) {
   const mirza = PEP_LINES.slice(0, PEP_MIRZA_COUNT);
@@ -112,6 +115,14 @@ const MORNING_LINES = [
 
 const PLACEHOLDER_MOVIES = ['Paste your watch-list here, one per line', 'e.g. The Social Network'];
 
+// The watch-list Juliet ships with (Areej can edit it any time in Settings -> Movies).
+const DEFAULT_MOVIES = [
+  'How to Lose a Guy in 10 Days',
+  'The Notebook',
+  '10 Things I Hate About You',
+  'Romeo + Juliet',
+];
+
 function defaultState() {
   return {
     version: 1,
@@ -119,7 +130,7 @@ function defaultState() {
     firstRunAt: null,  // set on first launch; used to tell "brand new" from "been away"
     settings: { ...DEFAULT_SETTINGS },
     activities: DEFAULT_ACTIVITIES.map((a) => ({ ...a })),
-    movies: { unseen: [...PLACEHOLDER_MOVIES], seen: [] },
+    movies: { unseen: [...DEFAULT_MOVIES], seen: [] },
     history: [],
     ratings: [],       // {value 1–10, at}
     moods: [],         // {value 'rough'|'okay'|'great', at}
@@ -128,4 +139,4 @@ function defaultState() {
   };
 }
 
-module.exports = { DEFAULT_ACTIVITIES, DEFAULT_SETTINGS, PLACEHOLDER_MOVIES, PEP_LINES, PEP_MIRZA_COUNT, pickPepLine, MORNING_LINES, defaultState };
+module.exports = { DEFAULT_ACTIVITIES, DEFAULT_SETTINGS, PLACEHOLDER_MOVIES, DEFAULT_MOVIES, PEP_LINES, PEP_MIRZA_COUNT, pickPepLine, MORNING_LINES, defaultState };

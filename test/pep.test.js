@@ -20,7 +20,10 @@ test('pep + morning lines: no emojis, non-empty, Mirza\'s lines lead', () => {
   assert.match(PEP_LINES[13], /Funko Pop/);
   assert.match(PEP_LINES[17], /Palestine/);
   assert.match(PEP_LINES[22], /give up on men/);
-  assert.equal(PEP_MIRZA_COUNT, 23);
+  assert.equal(PEP_MIRZA_COUNT, 26);
+  assert.match(PEP_LINES[23], /Lana song/);
+  assert.match(PEP_LINES[24], /men beater/);
+  assert.match(PEP_LINES[25], /learn how to spit/);
   assert.match(PEP_LINES[7], /door with a key/);
   assert.match(PEP_LINES[10], /jewellery/);
 });
