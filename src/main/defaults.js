@@ -91,6 +91,14 @@ const PEP_LINES = [
   "Go get 'em, men beater.",
   "If you can't throw a punch, you can learn how to spit.",
   "If overnight I up and end it, run away without a mention, go ghost like you the most.",
+  "You deserve a bouquet of tulips with books in between the flowers.",
+  "I hope our names are next to each other on a watchlist.",
+  "Don't worry, king — you're the best at violin in my eyes.",
+  "Vive l'Algerie!",
+  "PSG for the win.",
+  "Tous ensemble, on chante.",
+  "Canada is the best.",
+  "Canada is beautiful, but I'd rather see it in the reflection of your eyes. (Juliet said that, not Mirza.)",
   "You are the smartest, most talented, well-spoken person in any room. Stop overthinking and go.",
   "Quick reminder from your cat: you've got this. Smartest, most talented, best-spoken — that's you.",
   "Overthinking is just talent with nowhere to go. Point it at one thing and start.",
@@ -99,7 +107,7 @@ const PEP_LINES = [
   "The version of you that's worried and the version that's brilliant are the same person. Send the brilliant one.",
   "Deep breath. Smartest person you know is reading this.",
 ];
-const PEP_MIRZA_COUNT = 27;
+const PEP_MIRZA_COUNT = 35;
 // onlyMirza → one of his lines; otherwise his lines two times out of three, anything the rest of the time.
 function pickPepLine(onlyMirza = false, rng = Math.random) {
   const mirza = PEP_LINES.slice(0, PEP_MIRZA_COUNT);
