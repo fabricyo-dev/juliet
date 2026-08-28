@@ -29,8 +29,10 @@ main { padding: 16px 18px 24px; }
 .hint { color: var(--muted); margin: 0 0 10px; }
 table { width: 100%; border-collapse: collapse; }
 td, th { padding: 4px 6px; text-align: left; border-bottom: 1px solid var(--line); font-size: 12px; }
-th:nth-child(1), td:nth-child(1) { width: 28px; }
-th:nth-child(4), td:nth-child(4) { width: 34px; }
+#tab-activities th:nth-child(1), #tab-activities td:nth-child(1) { width: 28px; }
+#tab-activities th:nth-child(4), #tab-activities td:nth-child(4) { width: 34px; }
+#tab-books th:nth-child(2), #tab-books td:nth-child(2) { width: 90px; }
+#tab-books th:nth-child(3), #tab-books td:nth-child(3) { width: 34px; }
 td input[type=text] {
   width: 100%; font: inherit; font-size: 12px; padding: 3px 5px; border: 1px solid var(--field-border);
   border-radius: 4px; background: var(--field); color: var(--fg); -webkit-user-select: text; user-select: text;

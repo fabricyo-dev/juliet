@@ -18,7 +18,7 @@ Dev shortcuts: `JULIET_DEMO=nudge|gentle|movie|recap|pep|checkin|morning|stroll|
 npm run dist
 ```
 
-Produces `dist/Juliet-1.2.7-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Silicon). The app is **unsigned** (no Apple developer account).
+Produces `dist/Juliet-1.3.0-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Silicon). The app is **unsigned** (no Apple developer account).
 
 **First open on Areej's Mac:** open the `.dmg`, drag Juliet to Applications, then **right-click → Open → Open**. If macOS still refuses: System Settings → Privacy & Security → scroll down → **Open Anyway**. After that she launches at login on her own — look for the little cat in the menu bar.
 
@@ -46,6 +46,10 @@ Produces `dist/Juliet-1.2.7-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Si
 - **Cameo walks** (default 2/week): she just strolls across the screen, no bubble.
 - **Goodnight** (off by default, Settings → Schedule): once per night, ~90 min after active hours end, if she's still at the Mac: "It's late. Sleep is a study strategy too."
 - **iPhone pings** (off by default, Settings → iPhone): install the free ntfy app, subscribe to the private topic Juliet shows you, send a test. From then on anything due while she's *away* from the Mac (locked, idle, elsewhere) goes to her iPhone instead — nudges (tap opens the link), pep talks, movie night (tap opens Netflix search), the recap. At the Mac the cat still handles it; never both. Goodnight stays Mac-only. This is the app's only network use.
+- **Books** (Settings → Books, or menu-bar → Continue reading): what she's reading, with the page she left off — Juliet remembers it. Ships with The Odyssey and Lolita; "Send Juliet with this book" has her walk in with the bookmark.
+- **Lines** (Settings → Lines): add extra Ego-raiser lines in the app — no rebuild needed.
+- **Hotkeys**: Option+Cmd+J summons a nudge from anywhere; Option+Cmd+E is an instant Ego raiser.
+- **Updates**: Juliet checks GitHub twice a day; when a newer release exists, the menu-bar menu grows an "Update available — download" item (no auto-install: the app is unsigned, so she just downloads the new dmg and drags it over).
 - **Dark mode** is the default (Settings window and speech bubble); Settings → Schedule → untick *Dark mode* for the light look.
 - Juliet appears on the display your mouse is on.
 

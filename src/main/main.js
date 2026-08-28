@@ -1,7 +1,7 @@
 'use strict';
 const path = require('node:path');
 const {
-  app, BrowserWindow, Tray, Menu, nativeImage, nativeTheme, screen, shell, ipcMain, powerMonitor, clipboard,
+  app, BrowserWindow, Tray, Menu, nativeImage, nativeTheme, screen, shell, ipcMain, powerMonitor, clipboard, globalShortcut,
 } = require('electron');
 const S = require('./scheduler');
 const L = require('./links');
@@ -44,6 +44,13 @@ app.whenReady().then(() => {
   applyLoginItem();
   makeTray();
   setInterval(tick, S.TICK_MS);
+  // Global hotkeys: summon her from anywhere.
+  try {
+    globalShortcut.register('Alt+Command+J', () => fireNudge());
+    globalShortcut.register('Alt+Command+E', () => firePep(true));
+  } catch (e) { console.error('hotkeys failed', e); }
+  checkForUpdate();
+  setInterval(checkForUpdate, 12 * 3600 * 1000);
   powerMonitor.on('resume', () => setTimeout(tick, 5000));
   powerMonitor.on('unlock-screen', () => setTimeout(tick, 5000));
   tick();
@@ -65,9 +72,27 @@ app.whenReady().then(() => {
   if (demo === 'morning') setTimeout(() => fireMorning(), 1500);
   if (demo === 'stroll') setTimeout(() => fireStroll(), 1500);
   if (demo === 'followup') setTimeout(() => fireFollowup('Her'), 1500);
+  if (demo === 'reading') setTimeout(() => fireReading('odyssey'), 1500);
   if (demo === 'settings') setTimeout(openSettings, 500);
 });
 app.on('window-all-closed', () => { /* keep running in the menu bar */ });
+app.on('will-quit', () => { try { globalShortcut.unregisterAll(); } catch { /* ignore */ } });
+
+// ---------- updates (repo is public; no token needed) ----------
+const UPDATE_URL = 'https://api.github.com/repos/fabricyo-dev/juliet/releases/latest';
+let updateInfo = null; // {version, url}
+async function checkForUpdate() {
+  try {
+    const r = await fetch(UPDATE_URL, { headers: { 'User-Agent': 'Juliet', Accept: 'application/vnd.github+json' } });
+    if (!r.ok) return;
+    const j = await r.json();
+    const latest = String(j.tag_name || '').replace(/^v/, '');
+    if (!latest || cmpVer(latest, app.getVersion()) <= 0) { updateInfo = null; return; }
+    const asset = (j.assets || []).find((a) => /arm64\.dmg$/.test(a.name));
+    updateInfo = { version: latest, url: (asset && asset.browser_download_url) || j.html_url };
+    refreshTrayMenu();
+  } catch { /* offline is fine */ }
+}
 
 // ---------- tray ----------
 function makeTray() {
@@ -98,6 +123,12 @@ function refreshTrayMenu() {
     { label: 'Ego raiser', click: () => firePep(true) },
     { label: 'Rate Juliet…', click: () => openSettings('rate') },
     {
+      label: 'Continue reading',
+      submenu: (store.state.books || []).length
+        ? store.state.books.map((b) => ({ label: b.page > 0 ? `${b.title} — p. ${b.page}` : b.title, click: () => fireReading(b.id) }))
+        : [{ label: 'Add books in Settings…', click: () => openSettings('books') }],
+    },
+    {
       label: quietLabel,
       submenu: [
         { label: 'For 2 hours', click: () => setQuiet('hours2') },
@@ -112,6 +143,7 @@ function refreshTrayMenu() {
       label: 'Launch at login', type: 'checkbox', checked: !!store.state.settings.launchAtLogin,
       click: (item) => { store.state.settings.launchAtLogin = item.checked; store.save(); applyLoginItem(); },
     },
+    ...(updateInfo ? [{ type: 'separator' }, { label: `Update available (${updateInfo.version}) — download`, click: () => shell.openExternal(updateInfo.url) }] : []),
     { type: 'separator' },
     { label: 'Quit Juliet', click: () => app.quit() },
   ]));
@@ -324,13 +356,26 @@ function fireFollowup(title) {
     buttons: [{ id: 'loved', label: 'Loved it' }, { id: 'meh', label: 'Meh' }, { id: 'didnt', label: "Didn't watch" }],
   });
 }
+function fireReading(bookId) {
+  if (overlay) return false;
+  const b = (store.state.books || []).find((x) => x.id === bookId);
+  if (!b) return false;
+  current = { kind: 'reading', book: b.id };
+  sendShow({
+    kind: 'reading',
+    title: 'Continue reading, Areej.',
+    line: b.page > 0 ? `${b.title} — you're on page ${b.page}.` : `${b.title} — fresh start. Page one is the hardest.`,
+    buttons: [{ id: 'ack', label: 'On it' }, { id: 'settings', label: 'Update page' }],
+  });
+  return true;
+}
 function firePep(onlyMirza = false) {
   if (overlay) return;
   current = { kind: 'pep' };
   sendShow({
     kind: 'pep',
     title: 'Hey Areej.',
-    line: pickPepLine(onlyMirza),
+    line: pickPepLine(onlyMirza, Math.random, store.state.customPep),
     buttons: [{ id: 'ack', label: 'Thanks, Juliet' }],
   });
 }
@@ -350,7 +395,7 @@ async function pushToPhone(fire) {
     st.movies = r.movies; S.noteMovieOpened(st, r.title, Date.now()); store.save();
     msg = PH.buildPhoneMessage({ kind: 'movie', title: r.title });
   } else if (fire.kind === 'pep') {
-    msg = PH.buildPhoneMessage({ kind: 'pep', line: pickPepLine() });
+    msg = PH.buildPhoneMessage({ kind: 'pep', line: pickPepLine(false, Math.random, store.state.customPep) });
   } else if (fire.kind === 'recap') {
     msg = PH.buildPhoneMessage({ kind: 'recap', line: S.recapSummary(st.history, Date.now()).line });
   } else return;
@@ -442,6 +487,9 @@ ipcMain.on('overlay:action', async (_e, id) => {
       if (id === 'loved') { store.state.favourites = [...(store.state.favourites || []), { title, at: now }].slice(-500); store.save(); leave(true, 'Noted. Good taste.'); }
       else if (id === 'didnt') { store.state.movies = L.unpickMovie(store.state.movies, title); store.save(); leave(false); }
       else leave(false); // meh / timeout
+    } else if (current.kind === 'reading') {
+      if (id === 'settings') openSettings('books');
+      leave(false);
     } else if (current.kind === 'stroll' || current.kind === 'morning') {
       leave(false);
     } else if (current.kind === 'pep' || current.kind === 'goodnight' || current.kind === 'rating') {
@@ -484,6 +532,8 @@ function openSettings(tab) {
 }
 
 const { normalizeUrl, mergeActivities, migrateActivities } = require('./activities');
+const { normalizeBooks } = require('./books');
+const { cmpVer } = require('./version');
 
 function publicState() {
   return { ...store.state, recovered: store.recovered, placeholders: PLACEHOLDER_MOVIES, ratingLabels: R.RATING_LABELS };
@@ -545,6 +595,8 @@ ipcMain.handle('settings:save', (_e, patch) => {
     refreshTrayMenu();
   }
   if (Array.isArray(patch.activities)) st.activities = mergeActivities(st.activities, patch.activities, Date.now());
+  if (Array.isArray(patch.books)) { st.books = normalizeBooks(patch.books, Date.now()); refreshTrayMenu(); }
+  if (typeof patch.customPepText === 'string') st.customPep = L.cleanMovieList(patch.customPepText, []);
   if (typeof patch.moviesText === 'string') {
     const unseen = L.cleanMovieList(patch.moviesText, PLACEHOLDER_MOVIES);
     const lower = new Set(unseen.map((t) => t.toLowerCase()));
@@ -557,6 +609,7 @@ ipcMain.handle('settings:save', (_e, patch) => {
 });
 ipcMain.handle('settings:testNudge', () => fireNudge()); // false = she's already on screen
 ipcMain.handle('settings:pepMirza', () => { if (overlay) return false; firePep(true); return true; });
+ipcMain.handle('settings:readingNow', (_e, bookId) => fireReading(String(bookId)));
 ipcMain.handle('settings:testMovie', () => { fireMovie(); return true; });
 ipcMain.handle('settings:restoreDefaults', () => {
   store.state.activities = DEFAULT_ACTIVITIES.map((a) => ({ ...a }));

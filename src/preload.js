@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('juliet', {
   testNudge: () => ipcRenderer.invoke('settings:testNudge'),
   testMovie: () => ipcRenderer.invoke('settings:testMovie'),
   pepMirza: () => ipcRenderer.invoke('settings:pepMirza'),
+  readingNow: (bookId) => ipcRenderer.invoke('settings:readingNow', String(bookId)),
   restoreDefaults: () => ipcRenderer.invoke('settings:restoreDefaults'),
   unpickMovie: (title) => ipcRenderer.invoke('settings:unpickMovie', String(title)),
   rate: (value) => ipcRenderer.invoke('settings:rate', Number(value)),

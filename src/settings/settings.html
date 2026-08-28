@@ -18,7 +18,9 @@
   <nav>
     <button data-tab="activities" class="on">Activities</button>
     <button data-tab="movies">Movies</button>
+    <button data-tab="books">Books</button>
     <button data-tab="schedule">Schedule</button>
+    <button data-tab="lines">Lines</button>
     <button data-tab="rate">Rate</button>
     <button data-tab="phone">iPhone</button>
   </nav>
@@ -53,6 +55,32 @@
     <ul id="favs"></ul>
   </section>
 
+  <section id="tab-books" hidden>
+    <p class="hint">What you're reading. Juliet remembers the page for you — update it here whenever you stop.</p>
+    <table>
+      <thead><tr><th>Book</th><th>Page</th><th></th></tr></thead>
+      <tbody id="bookRows"></tbody>
+    </table>
+    <div class="row">
+      <button id="addBook">+ Add</button>
+      <span class="spacer"></span>
+      <button id="saveBooks" class="primary">Save</button>
+    </div>
+    <div class="row">
+      <select id="readSelect"></select>
+      <button id="readNow" class="ghost">Send Juliet with this book</button>
+      <span id="bookStatus" class="hint"></span>
+    </div>
+  </section>
+  <section id="tab-lines" hidden>
+    <p class="hint">Extra Ego-raiser lines — one per line. They join the built-in ones; Juliet picks at random.</p>
+    <textarea id="customPep" rows="10" placeholder="Write a line, press Save. She'll say it."></textarea>
+    <div class="row">
+      <span class="spacer"></span>
+      <button id="saveLines" class="primary">Save lines</button>
+      <span id="linesStatus" class="hint"></span>
+    </div>
+  </section>
   <section id="tab-schedule" hidden>
     <label>Nudges per day <input id="nudgesPerDay" type="number" min="1" max="8"></label>
     <label>Pep talks per week <input id="pepPerWeek" type="number" min="0" max="7"> <span class="hint">(she just shows up to say you've got this)</span></label>

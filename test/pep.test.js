@@ -40,3 +40,15 @@ test('pickPepLine(onlyMirza) never leaves Mirza\'s lines; mixed mode can reach t
   assert.ok(sawOther);
   assert.equal(pickPepLine(false, () => 0.9), PEP_LINES[PEP_LINES.length - 1] === undefined ? undefined : PEP_LINES[Math.floor(0.9 * PEP_LINES.length)]);
 });
+
+test('pickPepLine includes custom extra lines in both modes and never loses Mirza-only guarantee', () => {
+  const extra = ['A custom line from the Settings tab.'];
+  const mirza = new Set(PEP_LINES.slice(0, PEP_MIRZA_COUNT).concat(extra));
+  let sawCustom = false;
+  for (let i = 0; i < 400; i++) {
+    const l = pickPepLine(true, Math.random, extra);
+    assert.ok(mirza.has(l));
+    if (l === extra[0]) sawCustom = true;
+  }
+  assert.ok(sawCustom, 'custom line reachable in Ego raiser mode');
+});

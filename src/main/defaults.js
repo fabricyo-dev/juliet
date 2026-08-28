@@ -109,9 +109,9 @@ const PEP_LINES = [
 ];
 const PEP_MIRZA_COUNT = 35;
 // onlyMirza → one of his lines; otherwise his lines two times out of three, anything the rest of the time.
-function pickPepLine(onlyMirza = false, rng = Math.random) {
-  const mirza = PEP_LINES.slice(0, PEP_MIRZA_COUNT);
-  const pool = onlyMirza || rng() < 0.67 ? mirza : PEP_LINES;
+function pickPepLine(onlyMirza = false, rng = Math.random, extra = []) {
+  const mirza = PEP_LINES.slice(0, PEP_MIRZA_COUNT).concat(extra || []);
+  const pool = onlyMirza || rng() < 0.67 ? mirza : PEP_LINES.concat(extra || []);
   return pool[Math.min(pool.length - 1, Math.floor(rng() * pool.length))];
 }
 
@@ -123,6 +123,12 @@ const MORNING_LINES = [
 ];
 
 const PLACEHOLDER_MOVIES = ['Paste your watch-list here, one per line', 'e.g. The Social Network'];
+
+// What she's reading; Juliet remembers the page (Settings -> Books).
+const DEFAULT_BOOKS = [
+  { id: 'odyssey', title: 'The Odyssey', page: 0 },
+  { id: 'lolita', title: 'Lolita', page: 0 },
+];
 
 // The watch-list Juliet ships with (Areej can edit it any time in Settings -> Movies).
 const DEFAULT_MOVIES = [
@@ -140,6 +146,8 @@ function defaultState() {
     settings: { ...DEFAULT_SETTINGS },
     activities: DEFAULT_ACTIVITIES.map((a) => ({ ...a })),
     movies: { unseen: [...DEFAULT_MOVIES], seen: [] },
+    books: DEFAULT_BOOKS.map((b) => ({ ...b })),
+    customPep: [],  // extra Ego-raiser lines added in Settings -> Lines
     history: [],
     ratings: [],       // {value 1–10, at}
     moods: [],         // {value 'rough'|'okay'|'great', at}
@@ -148,4 +156,4 @@ function defaultState() {
   };
 }
 
-module.exports = { DEFAULT_ACTIVITIES, DEFAULT_SETTINGS, PLACEHOLDER_MOVIES, DEFAULT_MOVIES, PEP_LINES, PEP_MIRZA_COUNT, pickPepLine, MORNING_LINES, defaultState };
+module.exports = { DEFAULT_ACTIVITIES, DEFAULT_SETTINGS, PLACEHOLDER_MOVIES, DEFAULT_MOVIES, DEFAULT_BOOKS, PEP_LINES, PEP_MIRZA_COUNT, pickPepLine, MORNING_LINES, defaultState };

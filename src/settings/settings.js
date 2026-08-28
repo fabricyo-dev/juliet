@@ -9,7 +9,8 @@
     document.querySelectorAll('main section').forEach((s) => { s.hidden = s.id !== `tab-${name}`; });
   }
   document.querySelectorAll('nav button').forEach((b) => { b.onclick = () => showTab(b.dataset.tab); });
-  if (location.hash === '#rate') showTab('rate');
+  const initialTab = location.hash.slice(1);
+  if (initialTab && document.querySelector(`nav button[data-tab="${initialTab}"]`)) showTab(initialTab);
   window.juliet.onTab((t) => showTab(t));
 
   // ---- rate Juliet ----
@@ -51,6 +52,43 @@
     const r = await window.juliet.phoneTest();
     $('phoneStatus').textContent = r.ok ? 'Sent. Check your iPhone.' : "Couldn't send. Are you online? Is the topic subscribed?";
   };
+
+  // ---- books ----
+  function bookRow(b) {
+    const tr = document.createElement('tr');
+    tr.dataset.id = b.id || '';
+    const tdT = document.createElement('td');
+    const t = document.createElement('input'); t.type = 'text'; t.value = b.title || ''; t.placeholder = 'Title'; tdT.append(t);
+    const tdP = document.createElement('td');
+    const pg = document.createElement('input'); pg.type = 'number'; pg.min = '0'; pg.value = String(b.page || 0); tdP.append(pg);
+    const tdX = document.createElement('td');
+    const x = document.createElement('button'); x.className = 'x'; x.title = 'Remove'; x.textContent = '\u00d7'; x.onclick = () => tr.remove(); tdX.append(x);
+    tr.append(tdT, tdP, tdX);
+    return tr;
+  }
+  function readBooks() {
+    return [...$('bookRows').querySelectorAll('tr')].map((tr) => {
+      const [t, pg] = tr.querySelectorAll('input');
+      return { id: tr.dataset.id || undefined, title: t.value, page: pg.value };
+    });
+  }
+  function renderBooks() {
+    const books = state.books || [];
+    $('bookRows').replaceChildren(...books.map(bookRow));
+    $('readSelect').replaceChildren(...books.map((b) => {
+      const o = document.createElement('option'); o.value = b.id; o.textContent = b.page > 0 ? `${b.title} (p. ${b.page})` : b.title; return o;
+    }));
+  }
+  $('addBook').onclick = () => $('bookRows').append(bookRow({ title: '', page: 0 }));
+  $('saveBooks').onclick = async () => { await save({ books: readBooks() }); $('bookStatus').textContent = 'Saved.'; setTimeout(() => { $('bookStatus').textContent = ''; }, 4000); };
+  $('readNow').onclick = async () => {
+    const sent = await window.juliet.readingNow($('readSelect').value);
+    $('bookStatus').textContent = sent ? 'On her way.' : "She's already out.";
+    setTimeout(() => { $('bookStatus').textContent = ''; }, 5000);
+  };
+
+  // ---- custom lines ----
+  $('saveLines').onclick = async () => { await save({ customPepText: $('customPep').value }); $('linesStatus').textContent = 'Saved. She knows them now.'; setTimeout(() => { $('linesStatus').textContent = ''; }, 4000); };
 
   // ---- activities ----
   function actRow(a) {
@@ -120,7 +158,8 @@
     $('darkMode').checked = s.theme !== 'light';
     document.body.dataset.theme = s.theme === 'light' ? 'light' : 'dark';
 
-    renderRate(); renderPhone();
+    renderRate(); renderPhone(); renderBooks();
+    $('customPep').value = (state.customPep || []).join('\n');
 
     const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
     const n = (state.history || []).filter((h) => (!h.outcome || h.outcome === 'done') && h.at >= monthStart.getTime()).length;
