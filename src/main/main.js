@@ -164,7 +164,7 @@ function tick() {
     if (!store.state.firstRunAt) { store.state.firstRunAt = now; store.save(); }
     if (!store.state.welcomed) {
       // Nothing else until she has been introduced; the scheduler simply starts on the next tick.
-      if (presence.isPresent() && !overlay && !S.isQuiet(store.state, now)) fireWelcome();
+      if (presence.isPresent() && !overlay && !S.isQuiet(store.state, now) && !store.state.settings.remindersOff) fireWelcome();
       return;
     }
     const here = presence.isPresent();

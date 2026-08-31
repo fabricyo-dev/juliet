@@ -185,6 +185,22 @@ test('tick never fires while quiet, holds the slot, fires after quiet ends (insi
   assert.equal(S.tick(st, at(2026, 8, 18, 13, 1), true, seq(0.5)).kind, 'nudge');
 });
 
+test('tick: remindersOff silences everything — due slot, movie, pep — on mac and phone', () => {
+  const st = fresh(at(2026, 8, 18, 9));
+  st.settings.remindersOff = true;
+  st.schedule.slots = [at(2026, 8, 18, 12)]; st.schedule.fired = [];
+  st.schedule.movieNextAt = at(2026, 8, 18, 12, 30);
+  st.schedule.pepAt = at(2026, 8, 18, 13); st.schedule.pepFired = false;
+  for (let h = 9; h <= 21; h++) {
+    assert.equal(S.tick(st, at(2026, 8, 18, h, 45), true, seq(0.5)), null);
+    assert.equal(S.tick(st, at(2026, 8, 18, h, 50), false, seq(0.5), { phone: true }), null);
+  }
+  // switch back on next morning: yesterday's stale slot/pep were expired, movie clock moved on — no burst
+  st.settings.remindersOff = false;
+  assert.equal(S.tick(st, at(2026, 8, 19, 9, 5), true, seq(0.5)), null);
+  assert.ok(st.schedule.movieNextAt > at(2026, 8, 19, 9, 5));
+});
+
 test('tick: rest-of-today quiet drops today\'s slots at active end and clears itself tomorrow', () => {
   const st = fresh(at(2026, 8, 18, 9));
   st.schedule.slots = [at(2026, 8, 18, 15)]; st.schedule.fired = [];

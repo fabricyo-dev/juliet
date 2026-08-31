@@ -51,6 +51,7 @@ Produces `dist/Juliet-1.3.0-arm64.dmg` and `dist/mac-arm64/Juliet.app` (Apple Si
 - **Hotkeys**: Option+Cmd+J summons a nudge from anywhere; Option+Cmd+E is an instant Ego raiser.
 - **Updates**: Juliet checks GitHub twice a day; when a newer release exists, the menu-bar menu grows an "Update available — download" item (no auto-install: the app is unsigned, so she just downloads the new dmg and drags it over).
 - **Dark mode** is the default (Settings window and speech bubble); Settings → Schedule → untick *Dark mode* for the light look.
+- **Reminders kill-switch** (for a dev copy, not in the UI): set `"remindersOff": true` in `state.json` → settings and nothing ever fires on its own — no nudges, movie night, recap, pep, check-ins, morning, goodnight, strolls, or phone pings. The manual buttons, hotkeys, and menu-bar items all still work.
 - Juliet appears on the display your mouse is on.
 
 ## Art & animation

@@ -57,6 +57,7 @@ const DEFAULT_SETTINGS = {
   phoneTopic: null,        // generated the first time phone pings are switched on
   phoneServer: 'https://ntfy.sh',
   theme: 'dark', // 'dark' | 'light' — Settings window + speech bubble
+  remindersOff: false, // hidden kill-switch (edit state.json): nothing fires on its own; manual buttons still work
   launchAtLogin: true,
   presenceIdleSeconds: 300,
 };

@@ -153,6 +153,11 @@ function tick(state, now, present, rng = Math.random, opts = {}) {
   if (now - sch.recapNextAt > MOVIE_HOLD_MS) sch.recapNextAt = recapDueAt(settings, now);
   // while the recap is switched off, keep the due time in the future so re-enabling never fires a stale one
   if (!settings.recapEnabled && now >= sch.recapNextAt) sch.recapNextAt = recapDueAt(settings, now);
+  // same for both weekly clocks while all reminders are off
+  if (settings.remindersOff) {
+    if (now >= sch.movieNextAt) sch.movieNextAt = movieDueAt(settings, now);
+    if (now >= sch.recapNextAt) sch.recapNextAt = recapDueAt(settings, now);
+  }
   if (sch.quietUntil && now >= sch.quietUntil) sch.quietUntil = null; // quiet period over
   if (sch.followup && now - sch.followup.at > MOVIE_HOLD_MS) sch.followup = null; // asked too late — let it go
 
@@ -172,7 +177,7 @@ function tick(state, now, present, rng = Math.random, opts = {}) {
   sch.snoozed = (sch.snoozed || []).filter((s) => now - s.at <= SNOOZE_STALE_MS);
 
   const deliverable = present || !!opts.phone;
-  if (!deliverable || isQuiet(state, now)) return null;
+  if (!deliverable || isQuiet(state, now) || settings.remindersOff) return null;
 
   // 5. movie, then weekly recap, then (only at the Mac) goodnight
   if (now >= sch.movieNextAt) {
